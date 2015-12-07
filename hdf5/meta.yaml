@@ -1,0 +1,33 @@
+package:
+  name: hdf5
+  version: 1.8.15.1
+
+source:
+  fn: hdf5-1.8.15-patch1.tar.bz2
+  url: https://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src/hdf5-1.8.15-patch1.tar.bz2
+  md5: 3c0d7a8c38d1abc7b40fc12c1d5f2bb8
+  patches:
+    - vs_2015_cmake.patch [win and py >= 35]
+
+
+build:
+  number: 2     [unix]
+  number: 4     [win]
+  features:
+    - vc9     [win and py27]
+    - vc10    [win and py34]
+    - vc14    [win and py35]
+
+requirements:
+  build:
+    - python     [win]
+    - cmake
+    - zlib
+  run:
+    - zlib
+
+about:
+  home: http://www.hdfgroup.org/HDF5/
+  license: BSD-like (http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/COPYING)
+  license_family: BSD
+  summary: HDF5 is a data model, library, and file format for storing and managing data
