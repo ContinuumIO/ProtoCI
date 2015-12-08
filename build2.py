@@ -127,8 +127,7 @@ def make_deps(graph, package, dry=False, extra_args='', level=0):
                 failed.append(pkg)
                 continue
     
-    print("The following packages failed to build: ")
-    print(', '.join(failed))
+    return list(set(order)-set(failed)), failed 
 
 
 def make_pkg(package, dry=False, extra_args=''):
@@ -144,16 +143,7 @@ def make_pkg(package, dry=False, extra_args=''):
         except subprocess.CalledProcessError as e:
             print("Build failed with errorcode: ", e.returncode)
             print(e)
-            raise e
-    
-def recompile(graph, package, dry=False):
-    """ Recompile packages that depend on package against new version of package """
-    
-    # no need to order packages.
-    for p in graph.predecessors(package):
-        if graph.node[p].get('meta', ''):
-            make_pkg(graph.node[p]['meta'], dry=dry)
-    
+            raise e    
 
 
 if __name__ == "__main__":
@@ -179,10 +169,12 @@ if __name__ == "__main__":
     try:
         if args.buildall:
             args.build = None
-        make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level)
+        success, fail = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level)
+
+        print("BUILD STATUS:")
+        print("SUCCESS: [{}]".format(', '.join(success)))
+        print("FAIL: [{}]".format(', '.join(fail)))
         
-        if args.recompile:
-            print("\nRecompiling due to API change:")
-            print(recompile(g, args.build, args.dry))
+        return len(fail)
     except:
         raise
