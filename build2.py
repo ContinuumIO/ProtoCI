@@ -175,6 +175,6 @@ if __name__ == "__main__":
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
         
-        return len(fail)
+        sys.exit(len(fail))
     except:
         raise
