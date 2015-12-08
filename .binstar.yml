@@ -14,7 +14,8 @@ before_script:
 - echo "PYTHONPATH below should include ./conda and ./conda-build"
 - echo $PYTHONPATH
 - echo 'Try to get m4'
-- conda install m4 || wget ftp://ftp.gnu.org/gnu/m4/m4-1.4.10.tar.gz && tar -xvzf m4-1.4.10.tar.gz && cd m4-1.4.10 && ./configure --prefix=/usr/local/m4 && make && cd ..
+- install_m4() { wget ftp://ftp.gnu.org/gnu/m4/m4-1.4.10.tar.gz && tar -xvzf m4-1.4.10.tar.gz && cd m4-1.4.10 && ./configure --prefix=/usr/local/m4 && make && cd ..; }
+- conda install m4 || install_m4
 
 
 engine:
