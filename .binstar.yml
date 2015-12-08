@@ -1,0 +1,28 @@
+after_failure:
+- echo "After failure message!"
+after_script:
+- echo "ProtoCI build was a:$BINSTAR_BUILD_RESULT" | tee artifact1.txt
+after_success:
+- echo "ProtoCI BUILD SUCCESS"
+before_script:
+- echo "Prepare to install networkx...."
+- conda install networkx PyYAML requests
+- git clone https://github.com/conda/conda-build
+- git clone https://github.com/conda/conda
+- export PYTHONPATH=$PYTHONPATH:./conda-build:./conda
+- echo $PYTHONPATH
+
+build_targets:
+- conda
+engine:
+- python
+script:
+ - python build2.py ./ -buildall
+install_channels:
+- defaults
+- python
+package: ProtoCI
+platform:
+- osx-64
+- linux-64
+user: psteinberg
