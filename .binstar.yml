@@ -5,11 +5,13 @@ after_script:
 after_success:
 - echo "ProtoCI BUILD SUCCESS"
 before_script:
-- echo "Prepare to install networkx...."
-- conda install networkx PyYAML requests
+- echo "Prepare to install networkx PyYAML requests jinja2...."
+- conda install networkx PyYAML requests jinja2
+- echo "Prepare to clone conda and conda-build for metadata reading..."
 - git clone https://github.com/conda/conda-build
 - git clone https://github.com/conda/conda
 - export PYTHONPATH=$PYTHONPATH:./conda-build:./conda
+- echo "PYTHONPATH below should include ./conda and ./conda-build"
 - echo $PYTHONPATH
 
 build_targets:
