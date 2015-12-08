@@ -80,7 +80,7 @@ def build_order(graph, packages, level=0):
     if packages is None:
         tmp_global = graph.subgraph(graph.nodes())
     else:
-        packages = set(packages.split(' '))
+        packages = set(packages)
         tmp_global = graph.subgraph(packages)
         
         if level > 0:
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     
     p = argparse.ArgumentParser()
     build_pkgs = p.add_mutually_exclusive_group()
-    build_pkgs.add_argument("-build", default='')
+    build_pkgs.add_argument("-build", action='append', default=[])
     build_pkgs.add_argument("-buildall", action='store_true')
     p.add_argument("-dry", action='store_true', default=False)
     p.add_argument("-api", action='store_true', dest='recompile', default=False)
@@ -171,11 +171,11 @@ if __name__ == "__main__":
     p.add_argument("path", default='.')
     args = p.parse_args()
     
-    print("%s" % (args.build.split(' ')))
+    print("%s" % (args.build))
     print("-------------------------------")
     
     g = construct_graph(args.path)
-    
+
     try:
         if args.buildall:
             args.build = None
