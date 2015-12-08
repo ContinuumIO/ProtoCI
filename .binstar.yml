@@ -14,8 +14,6 @@ before_script:
 - echo "PYTHONPATH below should include ./conda and ./conda-build"
 - echo $PYTHONPATH
 
-build_targets:
-- conda
 engine:
 - python
 script:
@@ -23,8 +21,8 @@ script:
 install_channels:
 - defaults
 - python
-package: ProtoCI
+package: protoci
 platform:
 - osx-64
 - linux-64
-user: psteinberg
+
