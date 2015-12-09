@@ -19,7 +19,7 @@ sudo su - anaconda # verify this works
 #### Install Build Dependancies as root
 
 ```
-sudo yum install -y ntp chrpath wget dos2unix gcc gcc-c++ git m4
+sudo yum install -y ntp chrpath wget dos2unix gcc gcc-c++ git m4 patch
 ```
 
 #### As anaconda User
