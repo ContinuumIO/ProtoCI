@@ -21,12 +21,11 @@ before_script:
 engine:
 - python
 script:
- - python build2.py ./ -buildall
+ - python build2.py ./ build -buildall
 install_channels:
 - defaults
 - python
 package: protoci
 platform:
-- osx-64
 - linux-64
 
