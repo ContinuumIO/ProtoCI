@@ -213,8 +213,74 @@ def make_pkg(package, dry=False, extra_args=''):
             print(e)
             raise
 
-def cli():
 
+def submit_one(args):
+    import jinja2
+    js_file, key = args.json_file_key
+    with open('binstar_template.yml') as f:
+        contents = f.read()
+        t = jinja2.Template(contents)
+        package = 'protoci-' + key
+        info = (js_file, key)
+        platforms = "".join(" - {}\n".format(p) for p in args.platforms)
+        binstar_yml = t.render(PACKAGE=package,
+                               USER=args.user,
+                               PLATFORMS=platforms,
+                               BUILD_ARGS='{} build '.format(args.path) +\
+                                          '-json-file-key {0} {1}'.format(*info))
+        with open('.binstar.yml', 'w') as f:
+            f.write(binstar_yml)
+    full_package = '{0}/{1}'.format(args.user, package)
+    cmd = ['anaconda', 'build', 'list-all', full_package]
+    print('Check to see if', full_package, 'exists:', cmd)
+    proc = subprocess.Popen(cmd)
+    if proc.wait():
+        cmd = ['anaconda', 'package','--create', full_package]
+        print("prepare to create package", cmd)
+        if not args.dry:
+            create = subprocess.Popen(cmd, cwd=args.path)
+            if create.wait():
+                raise ValueError('Could not create {}'.format(full_package))
+
+    user_queue = '{0}/{1}'.format(args.user, args.queue)
+    cmd = ['anaconda', 'build',
+           'submit', './', '--queue',
+           user_queue]
+    print('prepare to submit', cmd)
+    if args.dry:
+        return 0
+    proc =  subprocess.Popen(cmd, cwd=args.path, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+    ret = proc.wait()
+    out = proc.stdout.read().decode()
+    tail = [line for line in out.split('\n')
+            if 'tail' in line and full_package in line][0]
+    print('TAIL:\t', tail)
+    return ret
+
+
+def submit_full_json(args):
+    with open(args.full_json, 'r') as f:
+        tree = json.load(f)
+        print('{} high level packages'.format(len(tree)))
+        print('\twith total packages:',
+              len(tree) + sum(map(len, tree.values())))
+        for key in tree:
+            print('Key: ', key, len(tree[key])+1, 'packages to build/test')
+            args.json_file_key = (args.full_json, key)
+            submit_one(args)
+    return 0
+
+def submit_helper(args):
+    if 'submit' in sys.argv:
+        if args.full_json:
+            return submit_full_json(args)
+        else:
+            assert len(args.json_file_key) == 2
+            return submit_one(args)
+
+
+def cli(parse_this=None):
     p = argparse.ArgumentParser()
     p.add_argument("path", default='.')
     subp = p.add_subparsers(help="Build or split to make json of package "
@@ -232,8 +298,25 @@ def cli():
     build_parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
     split_parser = subp.add_parser('split')
     split_parser.add_argument('-t','--targetnum', type=int, default=10, help="How many packages in one anaconda build submission typically.")
-    split_parser.add_argument('-s','--split-files',type=str)
-    args = p.parse_args()
+    split_parser.add_argument('-s','--split-files',type=str,required=True)
+    submit_parser = subp.add_parser('submit')
+    json_read_choice = submit_parser.add_mutually_exclusive_group()
+    json_read_choice.add_argument('-json-file-key',
+                                  default=[], nargs=2)
+    json_read_choice.add_argument('-full-json',
+                                  type=str,
+                                  help="full path to json of splits")
+    submit_parser.add_argument('-user', default='conda-team')
+    submit_parser.add_argument('-queue', default='build_recipes')
+    submit_parser.add_argument('-dry', action='store_true')
+    submit_parser.add_argument('-platforms', required=True,
+                               help="osx-64, linux-64 and/or win-64",
+                               default=[],
+                               action='append')
+    if parse_this is None:
+        args = p.parse_args()
+    else:
+        args = p.parse_args(parse_this)
     print('Running build2.py with args of', args)
     if getattr(args, 'json_file_key', None):
         assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
@@ -244,7 +327,8 @@ if __name__ == "__main__":
     args = cli()
     print("%s" % (getattr(args,'build','')))
     print("-------------------------------")
-
+    if 'submit' in sys.argv:
+        sys.exit(submit_helper(args))
     g = construct_graph(args.path)
     if getattr(args, 'split_files', None) is not None:
         split_graph(g, args.targetnum, args.split_files)
