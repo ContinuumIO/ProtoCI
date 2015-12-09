@@ -1,8 +1,9 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import os
 import subprocess
-
+import time
 import networkx as nx
 
 from conda_build.metadata import parse, MetaData
@@ -111,23 +112,36 @@ def check_built(package):
     return False
     
 
-def make_deps(graph, package, dry=False, extra_args='', level=0):
+def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
     g, order = build_order(graph, package, level=level)
-    print("Build order:\n{}".format('\n'.join(order)))
-    failed = []
-    for pkg in order:
-        if g.node[pkg].get('meta', ''):
-            print("Building ", pkg)
-            print(g.node[pkg])
-            try:
-                make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
-            except KeyboardInterrupt:
-                return failed
-            except:
-                failed.append(pkg)
-                continue
     
-    return list(set(order)-set(failed)), failed 
+    # Filter out any packages that don't have recipes
+    order = [pkg for pkg in order if g.node[pkg].get('meta')]
+    print("Build order:\n{}".format('\n'.join(order)))
+    
+    failed = set()
+    build_times = {x:None for x in order}
+    for pkg in order:            
+        print("Building ", pkg)
+        try:
+            # Autofail package if any dependency build failed
+            if any(p in failed for p in order):
+                print(failed)
+                failed_deps = [p for p in g.node[pkg]['meta']['depends'].keys() if p in failed]
+                print("Building {} failed because one or more of its dependencies failed to build: ".format(pkg), end=' ')
+                print(', '.join(failed_deps))
+                failed.add(pkg)
+                continue
+                
+            build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
+            build_times[pkg] = 30 + int(5*round(build_time/5))
+        except KeyboardInterrupt:
+            return failed
+        except subprocess.CalledProcessError:
+            failed.add(pkg)
+            continue
+    
+    return list(set(order)-failed), list(failed), build_times
 
 
 def make_pkg(package, dry=False, extra_args=''):
@@ -139,11 +153,14 @@ def make_pkg(package, dry=False, extra_args=''):
             extra_args = extra_args.split()
             args = ['conda', 'build'] + extra_args + [path]
             print("+ " + ' '.join(args))
+            start = time.time()
             subprocess.check_call(args)
+            end = time.time()
+            return end-start
         except subprocess.CalledProcessError as e:
             print("Build failed with errorcode: ", e.returncode)
             print(e)
-            raise e    
+            raise
 
 
 if __name__ == "__main__":
@@ -158,6 +175,8 @@ if __name__ == "__main__":
     p.add_argument("-api", action='store_true', dest='recompile', default=False)
     p.add_argument("-args", action='store', dest='cbargs', default='')
     p.add_argument("-l", type=int, action='store', dest='level', default=0)
+    p.add_argument("-t", action='store_true', dest='t', default=False)
+    p.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
     p.add_argument("path", default='.')
     args = p.parse_args()
     
@@ -169,11 +188,14 @@ if __name__ == "__main__":
     try:
         if args.buildall:
             args.build = None
-        success, fail = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level)
+        success, fail, times = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level, autofail=args.autofail)
 
         print("BUILD STATUS:")
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
+        
+        if args.t:
+            print(times)
         
         sys.exit(len(fail))
     except:
