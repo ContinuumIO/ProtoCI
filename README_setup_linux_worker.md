@@ -51,6 +51,7 @@ conda update conda
 ```
 conda install anaconda-client
 conda install anaconda-build
+conda install -n root conda-build
 ```
 
 #### Install additional stuff
@@ -61,11 +62,14 @@ conda install jinja2
 ```
 
 #### Create Worker Directory
+
+```
 mkdir worker
+```
 
 #### Start anaconda build worker
 
- * Create a authorization token
+ * Create authorization token
 
 ```
 anaconda auth --create -n "conda-team-build-linux-64" --scopes "api:build-worker" --out ~/.conda-team-build.token
@@ -83,59 +87,35 @@ anaconda logout
 conda install chalmers
 
 anaconda worker register -p linux-64 --dist aws-linux --hostname $(hostname -f) conda-team/build_recipes
-
-    Using Anaconda Cloud api site https://api.anaconda.org
-    Registered worker with worker_id:   56686922ea546b0acd9ce187
-    Worker config saved at /home/anaconda/.workers/56686922ea546b0acd9ce187.
-    Now run:
-        anaconda worker run 56686922ea546b0acd9ce187
-
+# prints out a worker_id to use in the next step
 ```
 
 
 ```
 chalmers add --name anaconda-build-worker -c "anaconda --show-traceback -t /home/anaconda/.conda-team-build.token worker run 56686922ea546b0acd9ce187 --status-file /home/anaconda/worker/worker.status"
-
-Added program anaconda-build-worker
-```
-#### as ec2-user
-
-```
-sudo visudo
 ```
 
-```
-anaconda ALL=(ALL) NOPASSWD: /home/anaconda/bin/chalmers service install
-```
 
 ```
 chalmers start --all
 ```
 
-```
-Starting programs anaconda-build-worker
-
-Checking status of program anaconda-build-worker     ... [  OK  ]
-```
 
 #### Forgot something
+ * Do your forgotten commands, then restart chalmers:
+```
+chalmers restart --all
+```
+#### Issues with chalmers
+
+* Check the log if you have any issues using
 
 ```
-conda install -n root conda-build
-
+chalmers log anaconda-build-worker
 ```
 
+ * If you need to update the script
+
 ```
-[anaconda@ip-10-81-166-149 ~]$ chalmers restart --all
-Restarting programs anaconda-build-worker
-
-Stop program anaconda-build-worker     ... [  OK  ]
-Checking status of program anaconda-build-worker     ... [  OK  ]
-```
-Issues with chalmers
-
-Check the log if you have any issues using
-
- chalmers log anaconda-build-worker
-If you need to update the script
 export EDITOR=vim - chalmers edit anaconda-build-worker
+```
