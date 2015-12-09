@@ -119,3 +119,12 @@ chalmers log anaconda-build-worker
 ```
 export EDITOR=vim - chalmers edit anaconda-build-worker
 ```
+
+# Submitting builds
+
+ * Change directories to a package dir with a .binstar.yml file, then
+```
+anaconda build submit ./ --queue conda-team/build_recipes
+```
+
+```build_recipes``` is the build queue on EC2.
