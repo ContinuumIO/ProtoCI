@@ -215,6 +215,19 @@ def make_pkg(package, dry=False, extra_args=''):
 
 
 def submit_one(args):
+    '''
+    Adjusts binstar_template.yml
+    base on
+        user
+        queue
+        build arguments
+        platforms
+    Comes up with a package name for user
+    Creates package if it doesn't exist
+    Submits package
+    Prints out the command you need to tail the build
+    returns 0 if okay
+    '''
     import jinja2
     js_file, key = args.json_file_key
     with open('binstar_template.yml') as f:
@@ -289,29 +302,41 @@ def cli(parse_this=None):
     build_pkgs = build_parser.add_mutually_exclusive_group()
     build_pkgs.add_argument("-build", action='append', default=[])
     build_pkgs.add_argument("-buildall", action='store_true')
-    build_pkgs.add_argument('-json-file-key', default=[], nargs=2)
-    build_parser.add_argument("-dry", action='store_true', default=False)
-    build_parser.add_argument("-api", action='store_true', dest='recompile', default=False)
+    build_pkgs.add_argument('-json-file-key', default=[], nargs=2,
+                            help="Example: -json-file-key package_tree.js libnetcdf")
+    build_parser.add_argument("-dry", action='store_true', default=False,
+                              help="Dry run")
+    build_parser.add_argument("-api", action='store_true', dest='recompile',
+                              default=False)
     build_parser.add_argument("-args", action='store', dest='cbargs', default='')
-    build_parser.add_argument("-l", type=int, action='store', dest='level', default=0)
-    build_parser.add_argument("-t", action='store_true', dest='t', default=False)
-    build_parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
+    build_parser.add_argument("-l", type=int, action='store', dest='level', default=0,
+                              help='Build to level. Ignored with -json-file-key')
+    build_parser.add_argument("-t", action='store_true', dest='t', default=False,
+                              help="Output build times")
+    build_parser.add_argument("-noautofail", action='store_false',
+                              dest='autofail', default=True)
     split_parser = subp.add_parser('split')
-    split_parser.add_argument('-t','--targetnum', type=int, default=10, help="How many packages in one anaconda build submission typically.")
-    split_parser.add_argument('-s','--split-files',type=str,required=True)
+    split_parser.add_argument('-t','--targetnum', type=int,
+                              default=10,
+                              help="How many packages in one anaconda "
+                                   "build submission typically.")
+    split_parser.add_argument('-s','--split-files',type=str,default="package_tree.js")
     submit_parser = subp.add_parser('submit')
     json_read_choice = submit_parser.add_mutually_exclusive_group()
     json_read_choice.add_argument('-json-file-key',
-                                  default=[], nargs=2)
+                                  default=[], nargs=2,
+                                help="Example: -json-file-key package_tree.js libnetcdf")
     json_read_choice.add_argument('-full-json',
                                   type=str,
-                                  help="full path to json of splits")
-    submit_parser.add_argument('-user', default='conda-team')
-    submit_parser.add_argument('-queue', default='build_recipes')
-    submit_parser.add_argument('-dry', action='store_true')
+                                  help="Build all packages named in json of splits")
+    submit_parser.add_argument('-user', default='conda-team',
+                               help="Anaconda username. Default: %(default)s")
+    submit_parser.add_argument('-queue', default='build_recipes',
+                               help="Anaconda build queue. Default: %(default)s")
+    submit_parser.add_argument('-dry', action='store_true', help='Dry run')
     submit_parser.add_argument('-platforms', required=True,
-                               help="osx-64, linux-64 and/or win-64",
-                               default=[],
+                               help="Some of all of %(default)s",
+                               default=['osx-64', 'linux-64','win-64'],
                                action='append')
     if parse_this is None:
         args = p.parse_args()
