@@ -79,12 +79,14 @@ def construct_graph(directory):
             g.add_edge(name, k)
 
     return g
+
 def successors_iter(g, s, nodes):
     for s in g.successors(s):
         nodes.add(s)
         for s in tuple(successors_iter(g, s, nodes)):
             nodes.add(s)
     return nodes
+
 def coalesce(hi_level_builds, targetnum):
     coalesced = defaultdict(lambda: [])
     counts = [(k, len(v)) for k, v in hi_level_builds.items()]
