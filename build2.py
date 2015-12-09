@@ -1,11 +1,16 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
+import argparse
 from collections import defaultdict
 import json
 import os
 import subprocess
-
+import time
 import networkx as nx
+import sys
+
+
 
 from conda_build.metadata import parse, MetaData
 
@@ -74,33 +79,33 @@ def construct_graph(directory):
             g.add_edge(name, k)
 
     return g
+def successors_iter(g, s, nodes):
+    for s in g.successors(s):
+        nodes.add(s)
+        for s in tuple(successors_iter(g, s, nodes)):
+            nodes.add(s)
+    return nodes
+def coalesce(hi_level_builds, targetnum):
+    coalesced = defaultdict(lambda: [])
+    counts = [(k, len(v)) for k, v in hi_level_builds.items()]
+    group = []
+    for key, count in sorted(counts, key=lambda x:x[1]):
+        group.append(hi_level_builds[key] + [key])
+        if sum(map(len, group)) >= targetnum:
+            for g in group:
+                if g == key:
+                    continue
+                coalesced[key] += [gi for gi in g if gi not in coalesced[key] and gi != key]
+            group = []
+    if group:
+        for g in group:
+            coalesced[key] += [gi for gi in g if gi not in coalesced[key] and gi != key]
+    return coalesced
 
-def split_graph(g, target_num, split_file):
+def split_graph(g, targetnum, split_file):
     g = g.copy()
     packages_covered = defaultdict(lambda:0)
     degrees = dict(g.degree_iter())
-    def successors_iter(g, s, nodes):
-        for s in g.successors(s):
-            nodes.add(s)
-            for s in tuple(successors_iter(g, s, nodes)):
-                nodes.add(s)
-        return nodes
-    def coalesce(hi_level_builds, target_num):
-        coalesced = defaultdict(lambda: [])
-        counts = [(k, len(v)) for k, v in hi_level_builds.items()]
-        group = []
-        for key, count in sorted(counts, key=lambda x:x[1]):
-            group.append(hi_level_builds[key] + [key])
-            if sum(map(len, group)) >= target_num:
-                for g in group:
-                    if g == key:
-                        continue
-                    coalesced[key] += [gi for gi in g if gi not in coalesced[key] and gi != key]
-                group = []
-        if group:
-            for g in group:
-                coalesced[key] += [gi for gi in g if gi not in coalesced[key] and gi != key]
-        return coalesced
 
     hi_level_builds = {}
     for hi_level in nx.topological_sort(g):
@@ -111,9 +116,9 @@ def split_graph(g, target_num, split_file):
             packages_covered[s] += 1
         packages_covered[hi_level] += 1
         succ_order = sorted(((s, degrees[s]) for s in succ),
-                            key=lambda x:-x[1])
+                            key=lambda x:x[1])
         hi_level_builds[hi_level] = [_[0] for _ in succ_order]
-    hi_level_builds = coalesce(hi_level_builds, target_num)
+    hi_level_builds = coalesce(hi_level_builds, targetnum)
     with open(split_file, 'w') as f:
         f.write(json.dumps(hi_level_builds))
     return hi_level_builds
@@ -157,24 +162,35 @@ def check_built(package):
     return False
 
 
-def make_deps(graph, package, dry=False, extra_args='', level=0):
+def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
     g, order = build_order(graph, package, level=level)
-    print("Build order:\n{}".format('\n'.join(order)))
-    failed = []
-    for pkg in order:
-        if g.node[pkg].get('meta', ''):
-            print("Building ", pkg)
-            print(g.node[pkg])
-            try:
-                make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
-            except KeyboardInterrupt:
-                return failed
-            except:
-                failed.append(pkg)
-                continue
 
-    print("The following packages failed to build: ")
-    print(', '.join(failed))
+    # Filter out any packages that don't have recipes
+    order = [pkg for pkg in order if g.node[pkg].get('meta')]
+    print("Build order:\n{}".format('\n'.join(order)))
+
+    failed = set()
+    build_times = {x:None for x in order}
+    for pkg in order:
+        print("Building ", pkg)
+        try:
+            # Autofail package if any dependency build failed
+            if any(p in failed for p in order):
+                print(failed)
+                failed_deps = [p for p in g.node[pkg]['meta']['depends'].keys() if p in failed]
+                print("Building {} failed because one or more of its dependencies failed to build: ".format(pkg), end=' ')
+                print(', '.join(failed_deps))
+                failed.add(pkg)
+                continue
+            build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
+            build_times[pkg] = 30 + int(5*round(build_time/5))
+        except KeyboardInterrupt:
+            return failed
+        except subprocess.CalledProcessError:
+            failed.add(pkg)
+            continue
+
+    return list(set(order)-failed), list(failed), build_times
 
 
 def make_pkg(package, dry=False, extra_args=''):
@@ -186,25 +202,16 @@ def make_pkg(package, dry=False, extra_args=''):
             extra_args = extra_args.split()
             args = ['conda', 'build'] + extra_args + [path]
             print("+ " + ' '.join(args))
+            start = time.time()
             subprocess.check_call(args)
+            end = time.time()
+            return end-start
         except subprocess.CalledProcessError as e:
             print("Build failed with errorcode: ", e.returncode)
             print(e)
-            raise e
+            raise
 
-def recompile(graph, package, dry=False):
-    """ Recompile packages that depend on package against new version of package """
-
-    # no need to order packages.
-    for p in graph.predecessors(package):
-        if graph.node[p].get('meta', ''):
-            make_pkg(graph.node[p]['meta'], dry=dry)
-
-
-
-if __name__ == "__main__":
-    import sys
-    import argparse
+def cli():
 
     p = argparse.ArgumentParser()
     p.add_argument("path", default='.')
@@ -214,37 +221,50 @@ if __name__ == "__main__":
     build_pkgs = build_parser.add_mutually_exclusive_group()
     build_pkgs.add_argument("-build", action='append', default=[])
     build_pkgs.add_argument("-buildall", action='store_true')
-    build_parser.add_argument("-from-json-file", type=str)
-    build_parser.add_argument("-from-json-key", type=str)
+    build_pkgs.add_argument('-json-file-key', default=[], nargs=2)
     build_parser.add_argument("-dry", action='store_true', default=False)
     build_parser.add_argument("-api", action='store_true', dest='recompile', default=False)
     build_parser.add_argument("-args", action='store', dest='cbargs', default='')
     build_parser.add_argument("-l", type=int, action='store', dest='level', default=0)
+    build_parser.add_argument("-t", action='store_true', dest='t', default=False)
+    build_parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
     split_parser = subp.add_parser('split')
     split_parser.add_argument('-t','--targetnum', type=int, default=10, help="How many packages in one anaconda build submission typically.")
     split_parser.add_argument('-s','--split-files',type=str)
     args = p.parse_args()
+    print('Running build2.py with args of', args)
+    if getattr(args, 'json_file_key', None):
+        assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
+    return args
 
+if __name__ == "__main__":
+
+    args = cli()
     print("%s" % (getattr(args,'build','')))
     print("-------------------------------")
 
     g = construct_graph(args.path)
-    if args.split_files is not None:
+    if getattr(args, 'split_files', None) is not None:
         split_graph(g, args.targetnum, args.split_files)
         print("See ", args.split_files, 'for split packages')
         sys.exit(0)
     try:
         if args.buildall:
             args.build = None
-            if args.from_json_keys:
-                with open(args.from_json_key[0]) as f:
-                    args.build = [args.from_json_key[1]] +  \
-                                 json.load(f)[args.from_json_key[1]]
+        if args.json_file_key:
+            with open(args.json_file_key[0]) as f:
+                args.build = json.load(f)[args.json_file_key[1]]
+                args.build += [args.json_file_key[1]]
 
-        make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level)
+        success, fail, times = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level, autofail=args.autofail)
 
-        if args.recompile:
-            print("\nRecompiling due to API change:")
-            print(recompile(g, args.build, args.dry))
+        print("BUILD STATUS:")
+        print("SUCCESS: [{}]".format(', '.join(success)))
+        print("FAIL: [{}]".format(', '.join(fail)))
+
+        if args.t:
+            print(times)
+
+        sys.exit(len(fail))
     except:
         raise
