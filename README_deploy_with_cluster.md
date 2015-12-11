@@ -71,6 +71,15 @@ aworker0@ip-172-31-52-162:~$ source activate anaconda-builder
 (anaconda-builder)aworker0@ip-172-31-52-162:~$ chalmers restart --all
 ```
 
+* Here is how to ssh, su and check logs
+
+```
+acluster ssh
+sudo su - aworker0
+source activate anaconda-builder
+chalmers log anaconda-build-worker --tail 50
+chalmers log anaconda-build-worker --head 50
+```
 
 ## Use the on-demand queue
 
