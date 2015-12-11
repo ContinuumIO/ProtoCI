@@ -34,7 +34,7 @@ aws_east_anaconda_builder:
  * Make sure you have a profile in your ~/.acluster/profiles.d that looks like this:
  * Note the token in the yaml below comes from the ```anaconda auth``` step above
  * Make sure the provider: name matches that in your providers.yaml
- * Make sure the queue named is one that has been created already with ```anaconda build queue --create```.  Here the queue should be of form <user-organization-name>/<queue-name>
+ * Make sure the queue named is one that has been created already with ```anaconda build queue --create```.  Here the queue should be of form \<user-organization-name\>/\<queue-name\>
 ```
 $ cat ~/.acluster/profiles.d/anaconda_builders.yaml
 name: anaconda_builder
