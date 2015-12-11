@@ -61,6 +61,16 @@ data:
 acluster ssh
 sudo apt-get install m4 make
 ```
+ * Here is how to ssh and su as aworker{X} to inspect or restart chalmers:
+
+```
+acluster ssh
+ubuntu@ip-172-31-52-162:~$ sudo su - aworker0
+aworker0@ip-172-31-52-162:~$ source activate anaconda-builder
+(anaconda-builder)aworker0@ip-172-31-52-162:~$ chalmers list
+(anaconda-builder)aworker0@ip-172-31-52-162:~$ chalmers restart --all
+```
+
 
 ## Use the on-demand queue
 
