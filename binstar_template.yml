@@ -8,10 +8,12 @@ before_script:
 - echo "Prepare to install networkx PyYAML requests jinja2...."
 - conda install networkx PyYAML requests jinja2
 - echo "Prepare to clone conda and conda-build for metadata reading..."
-- git clone https://github.com/conda/conda-build
-- git clone https://github.com/conda/conda
-- export PYTHONPATH=$PYTHONPATH:./conda-build:./conda
-- echo "PYTHONPATH below should include ./conda and ./conda-build"
+- mkdir conda_tmp
+# avoid conflict with conda or conda-build dirs if already there
+- git clone https://github.com/conda/conda-build conda_tmp/conda-build
+- git clone https://github.com/conda/conda conda_tmp/conda
+- export PYTHONPATH=$PYTHONPATH:./conda_tmp/conda-build:./conda_tmp/conda
+- echo "PYTHONPATH below should include ./conda_tmp"
 - echo $PYTHONPATH
 
 engine:

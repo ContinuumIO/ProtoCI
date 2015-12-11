@@ -1,1 +1,1 @@
-{"libnetcdf": ["curl", "cmake", "hdf5", "zlib"], "pysam": ["python", "cython", "cmake", "zlib"]}
+{"libnetcdf": ["cmake", "zlib", "hdf5", "curl"], "pysam": ["python", "cython", "cmake", "zlib"]}

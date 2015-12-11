@@ -5,6 +5,7 @@ import argparse
 from collections import defaultdict
 import json
 import os
+import shutil
 import subprocess
 import time
 import networkx as nx
@@ -106,6 +107,7 @@ def coalesce(hi_level_builds, targetnum):
 
 def split_graph(g, targetnum, split_file):
     g = g.copy()
+    toposort = nx.topological_sort(g)
     packages_covered = defaultdict(lambda:0)
     degrees = dict(g.degree_iter())
 
@@ -117,8 +119,8 @@ def split_graph(g, targetnum, split_file):
         for s in succ:
             packages_covered[s] += 1
         packages_covered[hi_level] += 1
-        succ_order = sorted(((s, degrees[s]) for s in succ),
-                            key=lambda x:x[1])
+        topo_order = [(s, toposort.index(s)) for s in succ]
+        succ_order = sorted(topo_order, key=lambda x: -x[1])
         hi_level_builds[hi_level] = [_[0] for _ in succ_order]
     hi_level_builds = coalesce(hi_level_builds, targetnum)
     with open(split_file, 'w') as f:
@@ -230,18 +232,20 @@ def submit_one(args):
     '''
     import jinja2
     js_file, key = args.json_file_key
-    with open('binstar_template.yml') as f:
+    with open(js_file, 'r') as f:
+        js = json.load(f)
+    with open(os.path.join(os.path.dirname(__file__), 'binstar_template.yml')) as f:
         contents = f.read()
         t = jinja2.Template(contents)
         package = 'protoci-' + key
-        info = (js_file, key)
+        info = (os.path.basename(js_file), key)
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
-                               BUILD_ARGS='{} build '.format(args.path) +\
+                               BUILD_ARGS='./ build ' +\
                                           '-json-file-key {0} {1}'.format(*info))
-        with open('.binstar.yml', 'w') as f:
+        with open(os.path.join(args.path, '.binstar.yml'), 'w') as f:
             f.write(binstar_yml)
     full_package = '{0}/{1}'.format(args.user, package)
     cmd = ['anaconda', 'build', 'list-all', full_package]
@@ -267,12 +271,21 @@ def submit_one(args):
     ret = proc.wait()
     out = proc.stdout.read().decode()
     tail = [line for line in out.split('\n')
-            if 'tail' in line and full_package in line][0]
+            if 'tail' in line and full_package in line]
+    if len(tail):
+        tail = tail[0]
+    else:
+        print("Apparently something wrong with:", out)
+        time.sleep(10)
     print('TAIL:\t', tail)
     return ret
 
 
 def submit_full_json(args):
+    ''' Given -full-json, run every package tree
+    in a json that was created by split action, typically
+    called package_tree.js
+    '''
     with open(args.full_json, 'r') as f:
         tree = json.load(f)
         print('{} high level packages'.format(len(tree)))
@@ -284,13 +297,46 @@ def submit_full_json(args):
             submit_one(args)
     return 0
 
+def pre_submit_clean_up(args):
+    '''Copies files from patterns like:
+
+    ./special_cases/<package-name>/run_test.sh
+
+    to
+
+    args.path/<package-name>/run_test.sh
+
+    (Helpful if anaconda-build needs mods)
+    '''
+    special = os.path.join(os.path.dirname(__file__), 'special_cases')
+    for dirr in os.listdir(special):
+        for fil in os.listdir(os.path.join(special, dirr)):
+            full_file = os.path.join(special, dirr, fil)
+            if not os.path.exists(os.path.join(args.path, dirr)):
+                continue
+            target = os.path.join(args.path, dirr, fil)
+            print('Copy', full_file, 'to', target)
+            print('Copy', full_file, 'to', target+'_removed')
+            shutil.copy(full_file, target + '_removed')
+            shutil.copy(full_file, target)
+
+
 def submit_helper(args):
+    pre_submit_clean_up(args)
     if 'submit' in sys.argv:
         if args.full_json:
             return submit_full_json(args)
         else:
-            assert len(args.json_file_key) == 2
-            return submit_one(args)
+            assert len(args.json_file_key) >= 2
+            arg1 = args.json_file_key[0]
+            hi_level = args.json_file_key[1:]
+            for key in hi_level:
+                args.json_file_key = (arg1, key)
+                ret_val = submit_one(args)
+                if ret_val:
+                    return ret_val
+    return 0
+
 
 
 def cli(parse_this=None):
@@ -302,8 +348,8 @@ def cli(parse_this=None):
     build_pkgs = build_parser.add_mutually_exclusive_group()
     build_pkgs.add_argument("-build", action='append', default=[])
     build_pkgs.add_argument("-buildall", action='store_true')
-    build_pkgs.add_argument('-json-file-key', default=[], nargs=2,
-                            help="Example: -json-file-key package_tree.js libnetcdf")
+    build_pkgs.add_argument('-json-file-key', default=[], nargs="+",
+                            help="Example: -json-file-key package_tree.js libnetcdf pysam")
     build_parser.add_argument("-dry", action='store_true', default=False,
                               help="Dry run")
     build_parser.add_argument("-api", action='store_true', dest='recompile',
@@ -337,7 +383,7 @@ def cli(parse_this=None):
     submit_parser.add_argument('-platforms', required=True,
                                help="Some of all of %(default)s",
                                default=['osx-64', 'linux-64','win-64'],
-                               action='append')
+                               nargs="+")
     if parse_this is None:
         args = p.parse_args()
     else:
@@ -364,10 +410,18 @@ if __name__ == "__main__":
             args.build = None
         if args.json_file_key:
             with open(args.json_file_key[0]) as f:
-                args.build = json.load(f)[args.json_file_key[1]]
-                args.build += [args.json_file_key[1]]
-
-        success, fail, times = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level, autofail=args.autofail)
+                packages = json.load(f)[args.json_file_key[1]]
+                packages += args.json_file_key[1:]
+                for package in packages:
+                    package = g.node[package]
+                    if not 'meta' in package:
+                        continue
+                    make_pkg(package, dry=args.dry, extra_args=args.cbargs)
+                sys.exit(0)
+        success, fail, times = make_deps(g, args.build, args.dry,
+                                         extra_args=args.cbargs,
+                                         level=args.level,
+                                         autofail=args.autofail)
 
         print("BUILD STATUS:")
         print("SUCCESS: [{}]".format(', '.join(success)))
