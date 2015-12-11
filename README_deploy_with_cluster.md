@@ -55,11 +55,11 @@ data:
     queue: conda-team/build_recipes_on_demand
 ```
 
- * Install 1 more dependency:
+ * Install more dependencies:
 
 ```
 acluster ssh
-sudo apt-get install m4
+sudo apt-get install m4 make
 ```
 
 ## Use the on-demand queue
