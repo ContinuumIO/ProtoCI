@@ -25,16 +25,18 @@ class PopenWrapper(object):
         self.rss = None
         self.vms = None
         self.returncode=None
+        self.disk = None
         
         #Process executed immediately
         self._execute(*args, **kwargs)
-        
+            
     def _execute(self, *args, **kwargs):
         # The polling interval (in seconds)
         time_int = kwargs.pop('time_int', 1)
         
         # Create a process of this (the parent) process
         parent = psutil.Process(os.getpid())
+        initial_usage = psutil.disk_usage(sys.prefix).used
         
         # Using the convenience Popen class provided by psutil
         start_time = time.time()
@@ -49,9 +51,14 @@ class PopenWrapper(object):
                     child_pids = [_.memory_info() for _ in parent.children(recursive=True) if _.is_running()]
                     # Sum the memory usage of all the children together (2D columnwise sum)
                     rss, vms = [sum(_) for _ in zip(*child_pids)]
-            
+                    
                     self.rss = max(rss, self.rss)
                     self.vms = max(vms, self.vms)
+                    
+                    # Get disk usage
+                    used_disk = initial_usage - psutil.disk_usage(sys.prefix).used
+                    self.disk = max(used_disk, self.disk)
+                    
                 except psutil.AccessDenied as e:
                     if _popen.status() == psutil.STATUS_ZOMBIE:
                         _popen.wait()
@@ -68,6 +75,23 @@ class PopenWrapper(object):
                     'rss': self.rss,
                     'vms': self.vms,
                     'returncode': self.returncode})
+                    
+def bytes2human(n):
+    # http://code.activestate.com/recipes/578019
+    # >>> bytes2human(10000)
+    # '9.8K'
+    # >>> bytes2human(100001221)
+    # '95.4M'
+    symbols = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
+    prefix = {}
+    for i, s in enumerate(symbols):
+        prefix[s] = 1 << (i + 1) * 10
+    for s in reversed(symbols):
+        if n >= prefix[s]:
+            value = float(n) / prefix[s]
+            return '%.1f%s' % (value, s)
+    return "%sB" % n
+
 
 def read_recipe(path):
     return MetaData(path)
@@ -308,18 +332,20 @@ if __name__ == "__main__":
 
         success, fail, times = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level, autofail=args.autofail)
         
-        print("BUILD STATUS:")
+        print("BUILD SUMMARY:")
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
         
+        # Sum memory usage and print elapsed times.
         r, v, e = 0, 0, 0
+        print("Build stats: Package, Elapsed time, Mem Usage, Disk Usage")
         for k, i in times.items():
             r, v = max(i.rss, r), max(i.vms, r)
             e += i.elapsed
-        r /= (1024 * 1024)
-        v /= (1024 * 1024)
-        print("Max Memory Usage (RSS/VMS): {:.2f}M/{:.2f}M".format(r, v))
-        print("Total elapsed time: {}".format(e/3600))
+            print("{}\t\t{:.2f}s\t{}\t{}".format(k, e, bytes2human(i.rss), bytes2human(i.disk)))
+        r, v = bytes2human(r), bytes2human(v)
+        print("Max Memory Usage (RSS/VMS): {}/{}".format(r, v))
+        print("Total elapsed time: {:.2f}m".format(e/60))
 
         sys.exit(len(fail))
     except:
