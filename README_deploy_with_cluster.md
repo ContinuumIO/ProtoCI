@@ -54,6 +54,11 @@ data:
     token: ps-c895b15d-bc0f-41c6-8439-e581b54b0175
     queue: conda-team/build_recipes_on_demand
 ```
+ * Start the cluster
+
+```
+acluster create conda-team-build-worker-linux-64-1 --profile anaconda_builder
+```
 
  * Install more dependencies:
 
