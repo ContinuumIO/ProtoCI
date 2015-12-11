@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-from __future__ import print_function
+from __future__ import print_function, division
 
 import argparse
 from collections import defaultdict
 import json
+import psutil
 import os
 import subprocess
 import time
@@ -15,6 +16,81 @@ import sys
 from conda_build.metadata import parse, MetaData
 
 CONDA_BUILD_CACHE=os.environ.get("CONDA_BUILD_CACHE")
+
+class PopenWrapper(object):
+    # Small wrapper around subprocess.Popen to allow memory usage monitoring
+    
+    def __init__(self, *args, **kwargs):
+        self.elapsed = None
+        self.rss = None
+        self.vms = None
+        self.returncode=None
+        self.disk = None
+        
+        #Process executed immediately
+        self._execute(*args, **kwargs)
+            
+    def _execute(self, *args, **kwargs):
+        # The polling interval (in seconds)
+        time_int = kwargs.pop('time_int', 1)
+        
+        # Create a process of this (the parent) process
+        parent = psutil.Process(os.getpid())
+        initial_usage = psutil.disk_usage(sys.prefix).used
+        
+        # Using the convenience Popen class provided by psutil
+        start_time = time.time()
+        _popen = psutil.Popen(*args, **kwargs)
+        try:
+            while _popen.is_running():
+                #We need to get all of the children of our process since our process spawns other processes
+                # Collect all of the child processes
+                
+                try:
+                    # We use the parent process to get mem usage of all spawned processes
+                    child_pids = [_.memory_info() for _ in parent.children(recursive=True) if _.is_running()]
+                    # Sum the memory usage of all the children together (2D columnwise sum)
+                    rss, vms = [sum(_) for _ in zip(*child_pids)]
+                    
+                    self.rss = max(rss, self.rss)
+                    self.vms = max(vms, self.vms)
+                    
+                    # Get disk usage
+                    used_disk = initial_usage - psutil.disk_usage(sys.prefix).used
+                    self.disk = max(used_disk, self.disk)
+                    
+                except psutil.AccessDenied as e:
+                    if _popen.status() == psutil.STATUS_ZOMBIE:
+                        _popen.wait()
+                        
+                time.sleep(time_int)
+                self.elapsed = time.time() - start_time
+                self.returncode = _popen.returncode
+        except KeyboardInterrupt:
+            _popen.kill()
+            raise
+            
+    def __repr__(self):
+        return str({'elapsed': self.elapsed,
+                    'rss': self.rss,
+                    'vms': self.vms,
+                    'returncode': self.returncode})
+                    
+def bytes2human(n):
+    # http://code.activestate.com/recipes/578019
+    # >>> bytes2human(10000)
+    # '9.8K'
+    # >>> bytes2human(100001221)
+    # '95.4M'
+    symbols = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
+    prefix = {}
+    for i, s in enumerate(symbols):
+        prefix[s] = 1 << (i + 1) * 10
+    for s in reversed(symbols):
+        if n >= prefix[s]:
+            value = float(n) / prefix[s]
+            return '%.1f%s' % (value, s)
+    return "%sB" % n
 
 
 def read_recipe(path):
@@ -185,7 +261,7 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
                 failed.add(pkg)
                 continue
             build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
-            build_times[pkg] = 30 + int(5*round(build_time/5))
+            build_times[pkg] = build_time
         except KeyboardInterrupt:
             return failed
         except subprocess.CalledProcessError:
@@ -197,17 +273,14 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
 
 def make_pkg(package, dry=False, extra_args=''):
     meta, path = package['meta'], package['recipe']
-    print(meta, path)
-    #print(" Building %s ".center(80, '=') % meta.name())
+    print("===========> Building ", path)
     if not dry:
         try:
             extra_args = extra_args.split()
-            args = ['conda', 'build'] + extra_args + [path]
+            args = ['conda', 'build', '-q'] + extra_args + [path]
             print("+ " + ' '.join(args))
-            start = time.time()
-            subprocess.check_call(args)
-            end = time.time()
-            return end-start
+            p = PopenWrapper(args, time_int=1)
+            return p
         except subprocess.CalledProcessError as e:
             print("Build failed with errorcode: ", e.returncode)
             print(e)
@@ -228,7 +301,6 @@ def cli():
     build_parser.add_argument("-api", action='store_true', dest='recompile', default=False)
     build_parser.add_argument("-args", action='store', dest='cbargs', default='')
     build_parser.add_argument("-l", type=int, action='store', dest='level', default=0)
-    build_parser.add_argument("-t", action='store_true', dest='t', default=False)
     build_parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
     split_parser = subp.add_parser('split')
     split_parser.add_argument('-t','--targetnum', type=int, default=10, help="How many packages in one anaconda build submission typically.")
@@ -259,13 +331,21 @@ if __name__ == "__main__":
                 args.build += [args.json_file_key[1]]
 
         success, fail, times = make_deps(g, args.build, args.dry, extra_args=args.cbargs, level=args.level, autofail=args.autofail)
-
-        print("BUILD STATUS:")
+        
+        print("BUILD SUMMARY:")
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
-
-        if args.t:
-            print(times)
+        
+        # Sum memory usage and print elapsed times.
+        r, v, e = 0, 0, 0
+        print("Build stats: Package, Elapsed time, Mem Usage, Disk Usage")
+        for k, i in times.items():
+            r, v = max(i.rss, r), max(i.vms, r)
+            e += i.elapsed
+            print("{}\t\t{:.2f}s\t{}\t{}".format(k, e, bytes2human(i.rss), bytes2human(i.disk)))
+        r, v = bytes2human(r), bytes2human(v)
+        print("Max Memory Usage (RSS/VMS): {}/{}".format(r, v))
+        print("Total elapsed time: {:.2f}m".format(e/60))
 
         sys.exit(len(fail))
     except:
