@@ -81,7 +81,7 @@ chalmers log anaconda-build-worker --tail 50
 chalmers log anaconda-build-worker --head 50
 
 # show the logfile name
-chalmers log anaconda-builder —showfile
+chalmers log anaconda-build-worker —showfile
 ```
 
 ## Use the on-demand queue
