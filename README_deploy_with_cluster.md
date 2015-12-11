@@ -79,6 +79,9 @@ sudo su - aworker0
 source activate anaconda-builder
 chalmers log anaconda-build-worker --tail 50
 chalmers log anaconda-build-worker --head 50
+
+# show the logfile name
+chalmers log anaconda-builder —showfile
 ```
 
 ## Use the on-demand queue
