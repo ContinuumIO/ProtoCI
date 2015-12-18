@@ -3,6 +3,7 @@ from __future__ import print_function, division
 
 import argparse
 from collections import defaultdict
+import datetime
 import json
 import psutil
 import os
@@ -392,6 +393,19 @@ def pre_submit_clean_up(args):
             print('Copy', full_file, 'to', target+'_removed')
             shutil.copy(full_file, target + '_removed')
             shutil.copy(full_file, target)
+
+    this_file = os.path.basename(__file__)
+    build2_in_other_dir = os.path.abspath(os.path.join(args.path, this_file))
+    shutil.copy(__file__, build2_in_other_dir)
+    print('Copy',__file__,'to', build2_in_other_dir)
+    package_tree_file = os.path.abspath(args.full_json or args.json_file_key[0])
+    n = datetime.datetime.now()
+    datestr = "_".join(map(str, (n.year, n.month, n.day, n.hour, n.minute, n.second)))
+    branch_name = 'build_' + datestr
+    print('Make a scratch git branch in', os.path.abspath(args.path))
+    subprocess.check_output(['git', 'checkout', '-b', branch_name], cwd=args.path)
+    subprocess.check_output(['git', 'add', build2_in_other_dir, package_tree_file], cwd=args.path)
+    subprocess.check_output(['git', 'commit', '-m', 'commit build2.py and the package json for anaconda-build'], cwd=args.path)
 
 
 def submit_helper(args):
