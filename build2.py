@@ -405,7 +405,10 @@ def pre_submit_clean_up(args):
     print('Make a scratch git branch in', os.path.abspath(args.path))
     subprocess.check_output(['git', 'checkout', '-b', branch_name], cwd=args.path)
     subprocess.check_output(['git', 'add', build2_in_other_dir, package_tree_file], cwd=args.path)
-    subprocess.check_output(['git', 'commit', '-m', 'commit build2.py and the package json for anaconda-build'], cwd=args.path)
+    print(subprocess.Popen(
+          ['git', 'commit', '-m',
+          'commit build2.py and the package json for anaconda-build'],
+          cwd=args.path).communicate())
 
 
 def submit_helper(args):
