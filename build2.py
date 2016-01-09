@@ -14,7 +14,6 @@ import networkx as nx
 import sys
 
 
-
 from conda_build.metadata import parse, MetaData
 
 CONDA_BUILD_CACHE=os.environ.get("CONDA_BUILD_CACHE")
@@ -127,6 +126,15 @@ def format_deps(deps):
 def get_build_deps(recipe):
     return format_deps(recipe.get_value('requirements/build'))
 
+def git_changed_files(git_rev, git_root=''):
+    """
+    Get the list of files changed in a git revision and return a list of package directories that have been modified.
+    """
+    files = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', git_rev])
+    
+    changed = {os.path.dirname(f) for f in files}
+    return changed
+    
 def construct_graph(directory):
     '''
     Construct a directed graph of dependencies from a directory of recipes
@@ -142,6 +150,7 @@ def construct_graph(directory):
     # get all immediate subdirectories
     recipe_dirs = next(os.walk(directory))[1]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
+    changed_recipes = git_changed_files('HEAD')
 
     for rd in recipe_dirs:
         recipe_dir = os.path.join(directory, rd)
@@ -152,11 +161,27 @@ def construct_graph(directory):
             continue
 
         # add package (in case it has no build deps)
-        g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir)
+        _dirty = True if rd in changed_recipes else False
+        g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
 
     return g
+
+def dirty(graph, implicit=True):
+    """
+    Return a set of all dirty nodes in the graph.
+    
+    These include implicit and explicit dirty nodes.
+    """
+    # Reverse the edges to get true dependency
+    dirty_nodes = {n for n, v in graph.node.items() if v.get('dirty', False)}
+    if not implicit:
+        return dirty_nodes
+    
+    # Get implicitly dirty nodes (all of the packages that depend on a dirty package)
+    dirty_nodes.update(*map(set, (graph.predecessors(n) for n in dirty_nodes)))
+    return dirty_nodes
 
 def successors_iter(g, s, nodes):
     for s in g.successors(s):
@@ -206,13 +231,25 @@ def split_graph(g, targetnum, split_file):
 
 def build_order(graph, packages, level=0):
     '''
-    Assumes that packages are in graph
+    Assumes that packages are in graph.
+    Builds a temporary graph of relevant nodes and returns it topological sort.
+    
+    Relevant nodes selected in a breadth first traversal sourced at each pkg in packages.
+    
+    Values expected for packages is one of None, sequence:
+       None: build the whole graph
+       empty sequence: build nodes marked dirty
+       non-empty sequence: build nodes in sequence
     '''
 
     if packages is None:
         tmp_global = graph.subgraph(graph.nodes())
     else:
-        packages = set(packages)
+        # sequence
+        if packages:
+            packages = set(packages)
+        else:
+            packages = dirty(graph)
         tmp_global = graph.subgraph(packages)
 
         if level > 0:
@@ -233,14 +270,6 @@ def build_order(graph, packages, level=0):
         tmp_global.node[n] = graph.node[n]
 
     return tmp_global, nx.topological_sort(tmp_global, reverse=True)
-
-
-def check_built(package):
-    '''Check to see if package is already built'''
-    print("checking if package exists")
-    if os.path.exists(os.path.join(CONDA_BUILD_CACHE, package.pkg_fn())):
-        return True
-    return False
 
 
 def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
