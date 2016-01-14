@@ -36,6 +36,7 @@ def submit_one(args):
                                                             js_file,
                                                             key,
                                                             args.targetnum)
+        print('build_args', build_args)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
