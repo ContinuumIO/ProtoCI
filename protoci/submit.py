@@ -32,7 +32,10 @@ def submit_one(args):
         package = 'protoci-' + key
         info = (os.path.basename(js_file), key)
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
-        build_args = '{} -dry -json-file-key {} {}'.format('.', js_file, key)
+        build_args = '{} -dry -json-file-key {} {} -t {}'.format('.',
+                                                                 js_file,
+                                                                 key,
+                                                                 args.targetnum)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
@@ -133,6 +136,9 @@ def submit_cli(parse_this=None):
                         help="Some of all of %(default)s",
                         default=['osx-64', 'linux-64','win-64'],
                         nargs="+")
+    parser.add_argument('--targetnum','-t',
+                        help="The --targetnum argument that was given to protoci-split-packages",
+                        required=True)
     if not parse_this:
         return parser.parse_args()
     return parser.parse_args(parse_this)

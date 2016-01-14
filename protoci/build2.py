@@ -309,7 +309,7 @@ def sequential_build_main(parse_this=None):
                 command_line_args = ("{} --split_files"
                                     " {0} -t {2}".format(os.path.abspath(args.path),
                                                          args.json_file_key,
-                                                         args.target_num))
+                                                         args.targetnum))
                 hi_level_builds = make_package_tree_main(parse_this=None,
                                                           exit=False)
                 packages = hi_level_builds[args.json_file_key[1]]
