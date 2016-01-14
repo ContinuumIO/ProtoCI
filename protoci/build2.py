@@ -264,7 +264,7 @@ def sequential_build_cli(parse_this=None):
                         help="Target number of packages in each subtree-build.")
     parser.add_argument('--packages', '-p',
                         default=[],
-                        action="append",
+                        nargs="+",
                         help="Rather than determine tree, build the --packages in order")
     if parse_this is None:
         args = parser.parse_args()
@@ -300,25 +300,51 @@ def pre_build_clean_up(args):
             shutil.copy(full_file, target)
 
 
-def sequential_build_main(parse_this=None, packages=None):
+def sequential_build_main(parse_this=None):
+    '''
+        Operates in several modes:
+            if args.packages is a list of packages:
+                build them in order from start to finish of list
+                exit 0 if no exception
+            if args.json_file_key is an iterable
+    '''
     from protoci.split import make_package_tree_main
-    if packages is None:
-        args = sequential_build_cli(parse_this=parse_this)
-        g = construct_graph(args.path)
+    args = sequential_build_cli(parse_this=parse_this)
+    g = construct_graph(args.path)
     pre_build_clean_up(args)
+    json_file, hi_level_list = args.json_file_key[0], args.json_file_key[1:]
     try:
         if args.buildall:
             args.build = None
-        if args.json_file_key:
-            if packages is None:
-                with open(args.json_file_key[0], 'w') as f:
+        if args.packages is None:
+            if args.json_file_key is not None:
+                with open(json_file, 'w') as f:
                     command_line_args = ['.', '--split-files',
                                         'not_used.js', '-t',
                                         str(args.targetnum)]
                     hi_level_builds = make_package_tree_main(parse_this=command_line_args,
-                                                              exit=False)
-                packages = hi_level_builds[args.json_file_key[1]]
-                packages += args.json_file_key[1:]
+                                                             exit=False)
+                packages = []
+                # args.json_file_key gave a list
+                # of keys in the json file
+                # from which to build a list in order
+                # if args.json_file_key is longer than
+                # 2 elements, items at idx 1: are keys
+                # in the json
+                for hi_level in hi_level_list:
+                    # build depends in topo order
+                    packages.extend(hi_level_builds[hi_level])
+                    # build the hi level package that is key in json
+                    packages.append(hi_level)
+            else:
+                # using -build or -buildall
+                packages = []
+        else:
+            # a list of packages within args.path dir
+            # was given and is being built from start
+            # of list to end
+            packages = args.packages
+        if packages:
             for package in packages:
                 package = g.node[package]
                 if not 'meta' in package:

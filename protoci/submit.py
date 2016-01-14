@@ -57,6 +57,8 @@ def submit_one(args):
     cmd = ['anaconda', 'build',
            'submit', './', '--queue',
            user_queue]
+    for label in getattr(args, 'labels', []) or []:
+        cmd.extend(('--label', label))
     print('prepare to submit', cmd)
     if args.dry:
         return 0
@@ -138,6 +140,11 @@ def submit_cli(parse_this=None):
     parser.add_argument('--targetnum','-t',
                         help="The --targetnum argument that was given to protoci-split-packages",
                         required=True)
+    parser.add_argument('--labels',
+                        help="The anaconda.org label(s) to apply "
+                             "(formerly called channels).\n\tDefault: %(default)s",
+                        nargs="+",
+                        default=['dev'])
     if not parse_this:
         return parser.parse_args()
     return parser.parse_args(parse_this)
