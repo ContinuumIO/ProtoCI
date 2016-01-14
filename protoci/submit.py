@@ -27,16 +27,14 @@ def submit_one(args):
     with open(js_file, 'r') as f:
         js = json.load(f)
     with open(os.path.join(os.path.dirname(__file__), 'data', 'binstar_template.yml')) as f:
+        packages = js[key] + [key]
         contents = f.read()
         t = jinja2.Template(contents)
         package = 'protoci-' + key
         info = (os.path.basename(js_file), key)
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
-        build_args = '{} -json-file-key {} {} -t {}'.format('.',
-                                                            js_file,
-                                                            key,
-                                                            args.targetnum)
-        print('build_args', build_args)
+        packages = " ".join('"{}"'.format(p) for p in packages)
+        build_args = '{} --packages {}'.format('.', packages)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
@@ -147,6 +145,8 @@ def submit_cli(parse_this=None):
 
 def submit_main(parse_this=None, exit=True):
     args = submit_cli(parse_this=parse_this)
+    print('Running submit with args: {}'.format(args))
     ret_val = submit_helper(args)
     if exit:
         sys.exit(ret_val)
+

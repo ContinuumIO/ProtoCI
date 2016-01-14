@@ -262,6 +262,10 @@ def sequential_build_cli(parse_this=None):
     parser.add_argument('--targetnum', '-t',
                         type=int,
                         help="Target number of packages in each subtree-build.")
+    parser.add_argument('--packages', '-p',
+                        default=[],
+                        action="append",
+                        help="Rather than determine tree, build the --packages in order")
     if parse_this is None:
         args = parser.parse_args()
     else:
@@ -296,29 +300,31 @@ def pre_build_clean_up(args):
             shutil.copy(full_file, target)
 
 
-def sequential_build_main(parse_this=None):
+def sequential_build_main(parse_this=None, packages=None):
     from protoci.split import make_package_tree_main
-    args = sequential_build_cli(parse_this=parse_this)
-    g = construct_graph(args.path)
+    if packages is None:
+        args = sequential_build_cli(parse_this=parse_this)
+        g = construct_graph(args.path)
     pre_build_clean_up(args)
     try:
         if args.buildall:
             args.build = None
         if args.json_file_key:
-            with open(args.json_file_key[0], 'w') as f:
-                command_line_args = ['.', '--split-files',
-                                    'not_used.js', '-t',
-                                    str(args.targetnum)]
-                hi_level_builds = make_package_tree_main(parse_this=command_line_args,
-                                                          exit=False)
+            if packages is None:
+                with open(args.json_file_key[0], 'w') as f:
+                    command_line_args = ['.', '--split-files',
+                                        'not_used.js', '-t',
+                                        str(args.targetnum)]
+                    hi_level_builds = make_package_tree_main(parse_this=command_line_args,
+                                                              exit=False)
                 packages = hi_level_builds[args.json_file_key[1]]
                 packages += args.json_file_key[1:]
-                for package in packages:
-                    package = g.node[package]
-                    if not 'meta' in package:
-                        continue
-                    make_pkg(package, dry=args.dry, extra_args=args.cbargs)
-                sys.exit(0)
+            for package in packages:
+                package = g.node[package]
+                if not 'meta' in package:
+                    continue
+                make_pkg(package, dry=args.dry, extra_args=args.cbargs)
+            sys.exit(0)
         success, fail, times = make_deps(g, args.build, args.dry,
                                          extra_args=args.cbargs,
                                          level=args.level,
