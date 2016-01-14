@@ -306,10 +306,9 @@ def sequential_build_main(parse_this=None):
             args.build = None
         if args.json_file_key:
             with open(args.json_file_key[0], 'w') as f:
-                command_line_args = ("{0} --split_files"
-                                    " {1} -t {2}".format('.',
-                                                         'not_used.js',
-                                                         args.targetnum))
+                command_line_args = ['.', '--split_files',
+                                    'not_used.js', '-t',
+                                    str(args.targetnum)]
                 hi_level_builds = make_package_tree_main(parse_this=command_line_args,
                                                           exit=False)
                 packages = hi_level_builds[args.json_file_key[1]]
