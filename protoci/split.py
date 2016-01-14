@@ -8,11 +8,15 @@ import networkx as nx
 from protoci.build2 import construct_graph
 
 def successors_iter(g, s, nodes):
-    for s in g.successors(s):
-        nodes.add(s)
+    for s in sorted(g.successors(s)):
+        nodes.append(s)
         for s in tuple(successors_iter(g, s, nodes)):
-            nodes.add(s)
-    return nodes
+            nodes.append(s)
+    nodes2 = []
+    for n in nodes:
+        if nodes2.count(n) == 0:
+            nodes2.append(n)
+    return nodes2
 
 def coalesce(hi_level_builds, targetnum):
     coalesced = defaultdict(lambda: [])
@@ -41,7 +45,7 @@ def split_graph(g, targetnum, split_file):
     for hi_level in nx.topological_sort(g):
         if hi_level in packages_covered:
             continue
-        succ = tuple(successors_iter(g, hi_level, set()))
+        succ = tuple(successors_iter(g, hi_level, []))
         for s in succ:
             packages_covered[s] += 1
         packages_covered[hi_level] += 1

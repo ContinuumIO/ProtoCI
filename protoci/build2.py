@@ -310,7 +310,7 @@ def sequential_build_main(parse_this=None):
                                     " {1} -t {2}".format('.',
                                                          'not_used.js',
                                                          args.targetnum))
-                hi_level_builds = make_package_tree_main(parse_this=None,
+                hi_level_builds = make_package_tree_main(parse_this=command_line_args,
                                                           exit=False)
                 packages = hi_level_builds[args.json_file_key[1]]
                 packages += args.json_file_key[1:]

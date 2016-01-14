@@ -32,10 +32,10 @@ def submit_one(args):
         package = 'protoci-' + key
         info = (os.path.basename(js_file), key)
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
-        build_args = '{} -dry -json-file-key {} {} -t {}'.format('.',
-                                                                 js_file,
-                                                                 key,
-                                                                 args.targetnum)
+        build_args = '{} -json-file-key {} {} -t {}'.format('.',
+                                                            js_file,
+                                                            key,
+                                                            args.targetnum)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
