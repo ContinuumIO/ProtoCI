@@ -312,12 +312,13 @@ def sequential_build_main(parse_this=None):
     args = sequential_build_cli(parse_this=parse_this)
     g = construct_graph(args.path)
     pre_build_clean_up(args)
-    json_file, hi_level_list = args.json_file_key[0], args.json_file_key[1:]
     try:
         if args.buildall:
             args.build = None
         if args.packages is None:
-            if args.json_file_key is not None:
+            if args.json_file_key:
+                json_file, hi_level_list = args.json_file_key[0], args.json_file_key[1:]
+
                 with open(json_file, 'w') as f:
                     command_line_args = ['.', '--split-files',
                                         'not_used.js', '-t',
@@ -351,6 +352,7 @@ def sequential_build_main(parse_this=None):
                     continue
                 make_pkg(package, dry=args.dry, extra_args=args.cbargs)
             sys.exit(0)
+        # using -build or -buildall flags
         success, fail, times = make_deps(g, args.build, args.dry,
                                          extra_args=args.cbargs,
                                          level=args.level,
