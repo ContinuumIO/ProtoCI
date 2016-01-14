@@ -1,4 +1,19 @@
+import os
 from setuptools import setup, find_packages
+
+
+def find_package_data():
+    special_cases = os.path.join(os.path.dirname(__file__),
+                                 'protoci',
+                                 'special_cases')
+    f = ['protoci/special_cases/*', 'protoci/special_cases']
+    for parent, dirs, files in os.walk(special_cases):
+        if files:
+            for fil in files:
+                f.append(os.path.join(parent, '*.*'))
+                f.append(parent)
+    print(f)
+    return f
 
 
 setup(
@@ -9,8 +24,8 @@ setup(
     url='http://github.com/ContinuumIO/protoci',
     packages=['protoci'],
     include_package_data=True,
-    package_data={'protoci': ['protoci/data/*']},
-    install_requires=['conda-build', 'networkx',
+    package_data={'protoci': ['protoci/data/*',] + find_package_data()},
+    install_requires=['networkx',
                       'PyYAML', 'requests',
                       'jinja2', 'psutil'],
     zip_safe=False,

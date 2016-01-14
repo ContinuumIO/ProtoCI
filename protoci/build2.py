@@ -259,6 +259,9 @@ def sequential_build_cli(parse_this=None):
     parser.add_argument("-args", action='store', dest='cbargs', default='')
     parser.add_argument("-l", type=int, action='store', dest='level', default=0)
     parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
+    parser.add_argument('--targetnum', '-t',
+                        type=int,
+                        help="Target number of packages in each subtree-build.")
     if parse_this is None:
         args = parser.parse_args()
     else:
@@ -269,15 +272,47 @@ def sequential_build_cli(parse_this=None):
     return args
 
 
+def pre_build_clean_up(args):
+    '''Copies files from patterns like:
+
+    ./special_cases/<package-name>/run_test.sh
+
+    to
+
+    args.path/<package-name>/run_test.sh
+
+    (Helpful if anaconda-build needs mods)
+    '''
+    special = os.path.join(os.path.dirname(__file__), 'special_cases')
+    for dirr in os.listdir(special):
+        for fil in os.listdir(os.path.join(special, dirr)):
+            full_file = os.path.join(special, dirr, fil)
+            if not os.path.exists(os.path.join(args.path, dirr)):
+                continue
+            target = os.path.join(args.path, dirr, fil)
+            print('Copy', full_file, 'to', target)
+            print('Copy', full_file, 'to', target+'_removed')
+            shutil.copy(full_file, target + '_removed')
+            shutil.copy(full_file, target)
+
+
 def sequential_build_main(parse_this=None):
+    from protoci.split import make_package_tree_main
     args = sequential_build_cli(parse_this=parse_this)
     g = construct_graph(args.path)
+    pre_build_clean_up(args)
     try:
         if args.buildall:
             args.build = None
         if args.json_file_key:
-            with open(args.json_file_key[0]) as f:
-                packages = json.load(f)[args.json_file_key[1]]
+            with open(args.json_file_key[0], 'w') as f:
+                command_line_args = ("{} --split_files"
+                                    " {0} -t {2}".format(os.path.abspath(args.path),
+                                                         args.json_file_key,
+                                                         args.target_num))
+                hi_level_builds = make_package_tree_main(parse_this=None,
+                                                          exit=False)
+                packages = hi_level_builds[args.json_file_key[1]]
                 packages += args.json_file_key[1:]
                 for package in packages:
                     package = g.node[package]

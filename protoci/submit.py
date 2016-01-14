@@ -1,7 +1,12 @@
 import argparse
+import datetime
 import json
+import shutil
 import subprocess
+import os
 import sys
+
+from protoci.build2 import pre_build_clean_up
 
 def submit_one(args):
     '''
@@ -21,17 +26,17 @@ def submit_one(args):
     js_file, key = args.json_file_key
     with open(js_file, 'r') as f:
         js = json.load(f)
-    with open(os.path.join(os.path.dirname(__file__), 'binstar_template.yml')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'binstar_template.yml')) as f:
         contents = f.read()
         t = jinja2.Template(contents)
         package = 'protoci-' + key
         info = (os.path.basename(js_file), key)
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
+        build_args = '{} -dry -json-file-key {} {}'.format('.', js_file, key)
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
-                               BUILD_ARGS='./ build ' +\
-                                          '-json-file-key {0} {1}'.format(*info))
+                               BUILD_ARGS=build_args)
         with open(os.path.join(args.path, '.binstar.yml'), 'w') as f:
             f.write(binstar_yml)
     full_package = '{0}/{1}'.format(args.user, package)
@@ -84,48 +89,9 @@ def submit_full_json(args):
             submit_one(args)
     return 0
 
-def pre_submit_clean_up(args):
-    '''Copies files from patterns like:
-
-    ./special_cases/<package-name>/run_test.sh
-
-    to
-
-    args.path/<package-name>/run_test.sh
-
-    (Helpful if anaconda-build needs mods)
-    '''
-    special = os.path.join(os.path.dirname(__file__), 'special_cases')
-    for dirr in os.listdir(special):
-        for fil in os.listdir(os.path.join(special, dirr)):
-            full_file = os.path.join(special, dirr, fil)
-            if not os.path.exists(os.path.join(args.path, dirr)):
-                continue
-            target = os.path.join(args.path, dirr, fil)
-            print('Copy', full_file, 'to', target)
-            print('Copy', full_file, 'to', target+'_removed')
-            shutil.copy(full_file, target + '_removed')
-            shutil.copy(full_file, target)
-
-    this_file = os.path.basename(__file__)
-    build2_in_other_dir = os.path.abspath(os.path.join(args.path, this_file))
-    shutil.copy(__file__, build2_in_other_dir)
-    print('Copy',__file__,'to', build2_in_other_dir)
-    package_tree_file = os.path.abspath(args.full_json or args.json_file_key[0])
-    n = datetime.datetime.now()
-    datestr = "_".join(map(str, (n.year, n.month, n.day, n.hour, n.minute, n.second)))
-    branch_name = 'build_' + datestr
-    print('Make a scratch git branch in', os.path.abspath(args.path))
-    subprocess.check_output(['git', 'checkout', '-b', branch_name], cwd=args.path)
-    subprocess.check_output(['git', 'add', build2_in_other_dir, package_tree_file], cwd=args.path)
-    print(subprocess.Popen(
-          ['git', 'commit', '-m',
-          'commit build2.py and the package json for anaconda-build'],
-          cwd=args.path).communicate())
-
 
 def submit_helper(args):
-    pre_submit_clean_up(args)
+    pre_build_clean_up(args)
     if args.full_json:
         return submit_full_json(args)
     else:

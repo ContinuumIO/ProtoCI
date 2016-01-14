@@ -18,7 +18,7 @@ def coalesce(hi_level_builds, targetnum):
     coalesced = defaultdict(lambda: [])
     counts = [(k, len(v)) for k, v in hi_level_builds.items()]
     group = []
-    for key, count in sorted(counts, key=lambda x:x[1]):
+    for key, count in sorted(counts, key=lambda x:(x[1], x[0])):
         group.append(hi_level_builds[key] + [key])
         if sum(map(len, group)) >= targetnum:
             for g in group:
@@ -73,8 +73,9 @@ def make_package_tree_cli(parse_this=None):
 def make_package_tree_main(parse_this=None, exit=True):
     args = make_package_tree_cli(parse_this=parse_this)
     g = construct_graph(args.path)
-    split_graph(g, args.targetnum, args.split_files)
+    hi_level_builds = split_graph(g, args.targetnum, args.split_files)
     print("See ", args.split_files, 'for split packages')
     if exit:
         sys.exit(0)
+    return hi_level_builds
 
