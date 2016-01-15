@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.2
+  version: 0.0.3
 
 source:
-  git_rev: 0.0.2
+  git_rev: 0.0.3
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
@@ -16,7 +16,7 @@ requirements:
     - networkx
     - requests
     - networkx
-    - yaml
+    - pyyaml
     - requests
     - jinja2
     - psutil
@@ -25,7 +25,7 @@ requirements:
     - networkx
     - requests
     - networkx
-    - yaml
+    - pyyaml
     - requests
     - jinja2
     - psutil
