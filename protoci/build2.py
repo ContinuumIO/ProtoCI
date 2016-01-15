@@ -168,7 +168,6 @@ def construct_graph(directory, filter_by_git_change=True):
     # get all immediate subdirectories
     recipe_dirs = next(os.walk(directory))[1]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
-    print('recipe_dirs', recipe_dirs)
     if filter_by_git_change:
         changed_recipes = git_changed_files('HEAD', git_root=directory)
         print('changed_recipes {}'.format(changed_recipes))
