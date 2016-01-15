@@ -92,6 +92,17 @@ def bytes2human(n):
             return '%.1f%s' % (value, s)
     return "%sB" % n
 
+def last_changed_git_branch(git_root):
+    args = ['git', 'for-each-ref',
+            '--sort=-committerdate', 'refs/heads/',]
+    proc = subprocess.Popen(args, cwd=git_root, stdout=subprocess.PIPE)
+    if proc.wait():
+        raise ValueError('Bad return code from git branch sort', proc.poll())
+    head_1 = prod.stdout.read().decode().splitlines()[0]
+    branch = head_1.split()[-1]
+    print('Last changed branch: ', branch)
+    return branch
+
 def git_changed_files(git_rev, git_root=''):
     """
     Get the list of files changed in a git revision and return a list of package directories that have been modified.
