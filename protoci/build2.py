@@ -148,8 +148,10 @@ def construct_graph(directory, filter_by_git_change=True):
     # get all immediate subdirectories
     recipe_dirs = next(os.walk(directory))[1]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
+    print('recipe_dirs', recipe_dirs)
     if filter_by_git_change:
         changed_recipes = git_changed_files('HEAD')
+        print('changed_recipes {}'.format(changed_recipes))
     for rd in recipe_dirs:
         recipe_dir = os.path.join(directory, rd)
         try:
@@ -163,10 +165,11 @@ def construct_graph(directory, filter_by_git_change=True):
             _dirty = True if rd in changed_recipes else False
         else:
             _dirty = True
+        print('rd', rd, 'dirty', dirty)
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
-
+            print('add edge', name, k)
     return g
 
 def dirty(graph, implicit=True):
@@ -184,7 +187,7 @@ def dirty(graph, implicit=True):
     dirty_nodes.update(*map(set, (graph.predecessors(n) for n in dirty_nodes)))
     return dirty_nodes
 
-def build_order(graph, packages, level=0):
+def build_order(graph, packages, level=0, filter_by_git_change=True):
     '''
     Assumes that packages are in graph.
     Builds a temporary graph of relevant nodes and returns it topological sort.
@@ -197,7 +200,7 @@ def build_order(graph, packages, level=0):
        non-empty sequence: build nodes in sequence
     '''
 
-    if packages is None:
+    if packages is None and not filter_by_git_change:
         tmp_global = graph.subgraph(graph.nodes())
     else:
         if packages:
