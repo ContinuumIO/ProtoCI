@@ -2,3 +2,17 @@
 -----
 
 Refactor to package style.
+
+0.0.1
+-----
+
+Fix problems introduced by refactor.
+Separate and clarify CLI choices
+Begin work on git difference builds 
+
+0.0.2
+-----
+
+Iron out git difference build better
+Put depends in meta.yaml
+Further refactor build2.py to separate files

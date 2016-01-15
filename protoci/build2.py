@@ -24,7 +24,10 @@ class PopenWrapper(object):
         self.elapsed = None
         self.rss = None
         self.vms = None
-        self.returncode=None
+        # set returncode to a bad one
+        # in case it is never defined
+        # after here.
+        self.returncode = 173
         self.disk = None
 
         #Process executed immediately
@@ -95,9 +98,12 @@ def bytes2human(n):
 def last_changed_git_branch(git_root):
     args = ['git', 'for-each-ref',
             '--sort=-committerdate', 'refs/heads/',]
-    proc = subprocess.Popen(args, cwd=git_root, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(args,
+                            cwd=git_root,
+                            stdout=subprocess.PIPE)
     if proc.wait():
-        raise ValueError('Bad return code from git branch sort', proc.poll())
+        raise ValueError('Bad return code '
+                         'from git branch sort', proc.poll())
     head_1 = proc.stdout.read().decode().splitlines()[0]
     branch = head_1.split()[-1]
     print('Last changed branch: ', branch)
@@ -266,6 +272,8 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
                 continue
             build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
             build_times[pkg] = build_time
+            if build_times[pkg].returncode:
+                failed.add(pkg)
         except KeyboardInterrupt:
             return failed
         except subprocess.CalledProcessError:
@@ -289,6 +297,8 @@ def make_pkg(package, dry=False, extra_args=''):
             print("Build failed with errorcode: ", e.returncode)
             print(e)
             raise
+    else:
+        return PopenWrapper(['echo', '-dry', '(dry run)'])
 
 
 def pre_build_clean_up(args):

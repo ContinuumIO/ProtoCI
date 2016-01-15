@@ -66,18 +66,31 @@ def sequential_build_main(parse_this=None, g=None, args=None):
             # was given and is being built from start
             # of list to end
             packages = args.packages
+        build_times = {x: None for x in packages}
+        success, fail = [], []
         if packages:
             for package in packages:
                 package = g.node[package]
                 if not 'meta' in package:
                     continue
-                make_pkg(package, dry=args.dry, extra_args=args.cbargs)
-            sys.exit(0)
-        # using -build or -buildall flags
-        success, fail, times = make_deps(g, args.build, args.dry,
-                                         extra_args=args.cbargs,
-                                         level=args.level,
-                                         autofail=args.autofail)
+                build_time = None
+                try:
+                    print('BUILD_PACKAGE:', package)
+                    build_time = make_pkg(package, dry=args.dry,
+                                          extra_args=args.cbargs)
+                    success.append(package)
+                except Exception as e:
+                    print('Failed on make_pkg for', package, 'with:', repr(e))
+                    fail.append(package)
+                build_time = time.time() - build_time
+                build_times[package] = build_time
+        else:
+            # using -build or -buildall flags
+            print('call make_deps from sequential_build_main')
+            success, fail, times = make_deps(g, args.build, args.dry,
+                                             extra_args=args.cbargs,
+                                             level=args.level,
+                                             autofail=args.autofail)
         print("BUILD SUMMARY:")
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
@@ -86,9 +99,12 @@ def sequential_build_main(parse_this=None, g=None, args=None):
         r, v, e = 0, 0, 0
         print("Build stats: Package, Elapsed time, Mem Usage, Disk Usage")
         for k, i in times.items():
-            r, v = max(i.rss, r), max(i.vms, r)
-            e += i.elapsed
-            print("{}\t\t{:.2f}s\t{}\t{}".format(k, e, bytes2human(i.rss), bytes2human(i.disk)))
+            rss = getattr(i, 'rss', -1)
+            vms = getattr(i, 'vms', -1)
+            r, v = max(rss, r), max(vms, r)
+            e += getattr(i, 'elapsed', -1)
+            disk = getattr(i, 'disk', -1)
+            print("{}\t\t{:.2f}s\t{}\t{}".format(k, e, bytes2human(rss), bytes2human(disk)))
         r, v = bytes2human(r), bytes2human(v)
         print("Max Memory Usage (RSS/VMS): {}/{}".format(r, v))
         print("Total elapsed time: {:.2f}m".format(e/60))

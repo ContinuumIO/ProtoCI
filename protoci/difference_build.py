@@ -38,7 +38,8 @@ def difference_build_cli(parse_this=None):
 
 def difference_build_main(parse_this=None):
     args = difference_build_cli(parse_this=parse_this)
-    checkout_last_changed(args)
+    # actually this may not be needed in CI: checkout_last_changed(args)
+    #      (I think that is done automatically)
     g = construct_graph(args.path, filter_by_git_change=True)
     return sequential_build_main(parse_this=parse_this,
                                  g=g,

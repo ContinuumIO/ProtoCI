@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.1
+  version: 0.0.2
 
 source:
-  git_rev: 0.0.1
+  git_rev: 0.0.2
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
@@ -13,7 +13,33 @@ requirements:
   build:
     - python
     - setuptools
+    - networkx
+    - requests
+    - networkx
+    - PyYAML
+    - requests
+    - jinja2
+    - psutil
   run:
     - python
+    - networkx
+    - requests
+    - networkx
+    - PyYAML
+    - requests
+    - jinja2
+    - psutil
 about:
   summary: Helps with building conda packages in anaconda-build.
+
+test:
+  imports:
+    - protoci
+    - networkx
+    - yaml
+    - jinja2
+  commands:
+    - protoci-sequential-build -h
+    - protoci-difference-build -h
+    - protoci-split-packages -h
+    - protoci-submit -h
