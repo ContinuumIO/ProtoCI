@@ -98,7 +98,7 @@ def last_changed_git_branch(git_root):
     proc = subprocess.Popen(args, cwd=git_root, stdout=subprocess.PIPE)
     if proc.wait():
         raise ValueError('Bad return code from git branch sort', proc.poll())
-    head_1 = prod.stdout.read().decode().splitlines()[0]
+    head_1 = proc.stdout.read().decode().splitlines()[0]
     branch = head_1.split()[-1]
     print('Last changed branch: ', branch)
     return branch
