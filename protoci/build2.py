@@ -185,7 +185,6 @@ def construct_graph(directory, filter_by_git_change=True):
             _dirty = True if rd in changed_recipes else False
         else:
             _dirty = True
-        print('rd', rd, '_dirty', _dirty)
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
