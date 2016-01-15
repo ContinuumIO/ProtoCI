@@ -16,7 +16,7 @@ requirements:
     - networkx
     - requests
     - networkx
-    - PyYAML
+    - yaml
     - requests
     - jinja2
     - psutil
@@ -25,7 +25,7 @@ requirements:
     - networkx
     - requests
     - networkx
-    - PyYAML
+    - yaml
     - requests
     - jinja2
     - psutil
