@@ -227,7 +227,6 @@ def build_order(graph, packages, level=0):
 
 def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
     g, order = build_order(graph, package, level=level)
-
     # Filter out any packages that don't have recipes
     order = [pkg for pkg in order if g.node[pkg].get('meta')]
     print("Build order:\n{}".format('\n'.join(order)))
@@ -324,6 +323,8 @@ def build_cli(parse_this=None):
         args = parser.parse_args()
     else:
         args = parser.parse_args(parse_this)
+    if not args.build:
+        args.build = None
     print('Running build2.py with args of', args)
     if getattr(args, 'json_file_key', None):
         assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
