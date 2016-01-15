@@ -96,9 +96,13 @@ def git_changed_files(git_rev, git_root=''):
     """
     Get the list of files changed in a git revision and return a list of package directories that have been modified.
     """
-    files = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', git_rev])
+    files = subprocess.check_output(['git', 'diff-tree',
+                                     '--no-commit-id', '--name-only',
+                                     '-r', git_rev],
+                                      cwd=git_root)
 
-    changed = {os.path.dirname(f) for f in files}
+    too_short = ['\\','/']
+    changed = {os.path.dirname(f) for f in files if f and f not in too_short}
     return changed
 
 def read_recipe(path):
@@ -150,7 +154,7 @@ def construct_graph(directory, filter_by_git_change=True):
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
     print('recipe_dirs', recipe_dirs)
     if filter_by_git_change:
-        changed_recipes = git_changed_files('HEAD')
+        changed_recipes = git_changed_files('HEAD', git_root=directory)
         print('changed_recipes {}'.format(changed_recipes))
     for rd in recipe_dirs:
         recipe_dir = os.path.join(directory, rd)

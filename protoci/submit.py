@@ -35,6 +35,8 @@ def submit_one(args):
         platforms = "".join(" - {}\n".format(p) for p in args.platforms)
         packages = " ".join('"{}"'.format(p) for p in packages)
         build_args = '{} --packages {}'.format('.', packages)
+        if args.dry:
+            build_args += ' -dry'
         binstar_yml = t.render(PACKAGE=package,
                                USER=args.user,
                                PLATFORMS=platforms,
