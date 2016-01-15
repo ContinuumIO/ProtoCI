@@ -96,11 +96,15 @@ def git_changed_files(git_rev, git_root=''):
     """
     Get the list of files changed in a git revision and return a list of package directories that have been modified.
     """
-    files = subprocess.check_output(['git', 'diff-tree',
-                                     '--no-commit-id', '--name-only',
-                                     '-r', git_rev],
-                                      cwd=git_root)
-
+    proc = subprocess.Popen(['git', 'diff-tree',
+                              '--no-commit-id', '--name-only',
+                              '-r', git_rev
+                              ],
+                              cwd=git_root,
+                              stdout=subprocess.PIPE)
+    if proc.wait():
+        raise ValueError('Bad git return code: {}'.format(proc.poll()))
+    files = proc.stdout.read().decode().splitlines()
     too_short = ('\\','/')
     changed = {os.path.dirname(f) for f in files}
     changed = {f for f in changed if f and f not in too_short}
@@ -170,7 +174,7 @@ def construct_graph(directory, filter_by_git_change=True):
             _dirty = True if rd in changed_recipes else False
         else:
             _dirty = True
-        print('rd', rd, 'dirty', dirty)
+        print('rd', rd, '_dirty', _dirty)
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
