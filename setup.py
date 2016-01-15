@@ -18,7 +18,7 @@ def find_package_data():
 
 setup(
     name='protoci',
-    version='0.0.0',
+    version='0.0.1',
     author='Continuum Analytics',
     author_email='psteinberg@continuum.io',
     url='http://github.com/ContinuumIO/protoci',
@@ -31,8 +31,8 @@ setup(
     zip_safe=False,
     entry_points={
       'console_scripts': [
-          'protoci-sequential-build = protoci.build2:sequential_build_main',
-          'protoci-difference-build = protoci.build2:difference_build_main',
+          'protoci-sequential-build = protoci.sequential_build:sequential_build_main',
+          'protoci-difference-build = protoci.difference_build:difference_build_main',
           'protoci-split-packages = protoci.split:make_package_tree_main',
           'protoci-submit = protoci.submit:submit_main'
           ],
