@@ -13,7 +13,6 @@ import time
 import networkx as nx
 import sys
 
-
 from conda_build.metadata import parse, MetaData
 
 CONDA_BUILD_CACHE=os.environ.get("CONDA_BUILD_CACHE")
@@ -93,6 +92,14 @@ def bytes2human(n):
             return '%.1f%s' % (value, s)
     return "%sB" % n
 
+def git_changed_files(git_rev, git_root=''):
+    """
+    Get the list of files changed in a git revision and return a list of package directories that have been modified.
+    """
+    files = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', git_rev])
+
+    changed = {os.path.dirname(f) for f in files}
+    return changed
 
 def read_recipe(path):
     return MetaData(path)
@@ -126,7 +133,7 @@ def format_deps(deps):
 def get_build_deps(recipe):
     return format_deps(recipe.get_value('requirements/build'))
 
-def construct_graph(directory):
+def construct_graph(directory, filter_by_git_change=True):
     '''
     Construct a directed graph of dependencies from a directory of recipes
 
@@ -141,7 +148,8 @@ def construct_graph(directory):
     # get all immediate subdirectories
     recipe_dirs = next(os.walk(directory))[1]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
-
+    if filter_by_git_change:
+        changed_recipes = git_changed_files('HEAD')
     for rd in recipe_dirs:
         recipe_dir = os.path.join(directory, rd)
         try:
@@ -151,22 +159,51 @@ def construct_graph(directory):
             continue
 
         # add package (in case it has no build deps)
-        g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir)
+        if filter_by_git_change:
+            _dirty = True if rd in changed_recipes else False
+        else:
+            _dirty = True
+        g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
 
     return g
 
+def dirty(graph, implicit=True):
+    """
+    Return a set of all dirty nodes in the graph.
+
+    These include implicit and explicit dirty nodes.
+    """
+    # Reverse the edges to get true dependency
+    dirty_nodes = {n for n, v in graph.node.items() if v.get('dirty', False)}
+    if not implicit:
+        return dirty_nodes
+
+    # Get implicitly dirty nodes (all of the packages that depend on a dirty package)
+    dirty_nodes.update(*map(set, (graph.predecessors(n) for n in dirty_nodes)))
+    return dirty_nodes
 
 def build_order(graph, packages, level=0):
     '''
-    Assumes that packages are in graph
+    Assumes that packages are in graph.
+    Builds a temporary graph of relevant nodes and returns it topological sort.
+
+    Relevant nodes selected in a breadth first traversal sourced at each pkg in packages.
+
+    Values expected for packages is one of None, sequence:
+       None: build the whole graph
+       empty sequence: build nodes marked dirty
+       non-empty sequence: build nodes in sequence
     '''
 
     if packages is None:
         tmp_global = graph.subgraph(graph.nodes())
     else:
-        packages = set(packages)
+        if packages:
+            packages = set(packages)
+        else:
+            packages = dirty(graph)
         tmp_global = graph.subgraph(packages)
 
         if level > 0:
@@ -187,15 +224,6 @@ def build_order(graph, packages, level=0):
         tmp_global.node[n] = graph.node[n]
 
     return tmp_global, nx.topological_sort(tmp_global, reverse=True)
-
-
-def check_built(package):
-    '''Check to see if package is already built'''
-    print("checking if package exists")
-    if os.path.exists(os.path.join(CONDA_BUILD_CACHE, package.pkg_fn())):
-        return True
-    return False
-
 
 def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
     g, order = build_order(graph, package, level=level)
@@ -267,3 +295,36 @@ def pre_build_clean_up(args):
             shutil.copy(full_file, target + '_removed')
             shutil.copy(full_file, target)
 
+def build_cli(parse_this=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", default='.')
+    build_pkgs = parser.add_mutually_exclusive_group()
+    build_pkgs.add_argument("-build", action='append', default=[])
+    build_pkgs.add_argument("-buildall", action='store_true')
+    build_pkgs.add_argument('-json-file-key', default=[], nargs="+",
+                            help="Example: -json-file-key package_tree.js libnetcdf pysam")
+    build_pkgs.add_argument('--all-diffs',
+                            help="Test any diffs in path including downstream",
+                            action="store_true")
+    parser.add_argument("-dry", action='store_true', default=False,
+                              help="Dry run")
+    parser.add_argument("-api", action='store_true', dest='recompile',
+                              default=False)
+    parser.add_argument("-args", action='store', dest='cbargs', default='')
+    parser.add_argument("-l", type=int, action='store', dest='level', default=0)
+    parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
+    parser.add_argument('--targetnum', '-t',
+                        type=int,
+                        help="Target number of packages in each subtree-build.")
+    parser.add_argument('--packages', '-p',
+                        default=[],
+                        nargs="+",
+                        help="Rather than determine tree, build the --packages in order")
+    if parse_this is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(parse_this)
+    print('Running build2.py with args of', args)
+    if getattr(args, 'json_file_key', None):
+        assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
+    return args

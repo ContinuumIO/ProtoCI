@@ -3,47 +3,20 @@ import sys
 
 from protoci.build2 import (make_pkg, make_deps,
                             construct_graph, pre_build_clean_up,
-                            bytes2human, )
-
-def sequential_build_cli(parse_this=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", default='.')
-    build_pkgs = parser.add_mutually_exclusive_group()
-    build_pkgs.add_argument("-build", action='append', default=[])
-    build_pkgs.add_argument("-buildall", action='store_true')
-    build_pkgs.add_argument('-json-file-key', default=[], nargs="+",
-                            help="Example: -json-file-key package_tree.js libnetcdf pysam")
-    parser.add_argument("-dry", action='store_true', default=False,
-                              help="Dry run")
-    parser.add_argument("-api", action='store_true', dest='recompile',
-                              default=False)
-    parser.add_argument("-args", action='store', dest='cbargs', default='')
-    parser.add_argument("-l", type=int, action='store', dest='level', default=0)
-    parser.add_argument("-noautofail", action='store_false', dest='autofail', default=True)
-    parser.add_argument('--targetnum', '-t',
-                        type=int,
-                        help="Target number of packages in each subtree-build.")
-    parser.add_argument('--packages', '-p',
-                        default=[],
-                        nargs="+",
-                        help="Rather than determine tree, build the --packages in order")
-    if parse_this is None:
-        args = parser.parse_args()
-    else:
-        args = parser.parse_args(parse_this)
-    print('Running build2.py with args of', args)
-    if getattr(args, 'json_file_key', None):
-        assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
-    return args
+                            bytes2human, build_cli)
 
 
-def sequential_build_main(parse_this=None):
+
+def sequential_build_main(parse_this=None, g=None):
     '''
         sequential_build_main(parse_this=None)
         Params:
             parse_this = None or iterable of sys.argv like
                          list to sequential_build_cli
 
+            g = a graph from construct_graph()
+                or None to call construct_graph with
+                filter_by_git_diff *False*
         Notes: This operates in several modes:
             if args.packages is a list of packages:
                 build them in order from start to finish of list
@@ -60,8 +33,9 @@ def sequential_build_main(parse_this=None):
                 with
     '''
     from protoci.split import make_package_tree_main
-    args = sequential_build_cli(parse_this=parse_this)
-    g = construct_graph(args.path)
+    args = build_cli(parse_this=parse_this)
+    if g is None:
+        g = construct_graph(args.path, filter_by_git_diff=False)
     pre_build_clean_up(args)
     try:
         if args.buildall:
