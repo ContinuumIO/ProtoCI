@@ -101,8 +101,9 @@ def git_changed_files(git_rev, git_root=''):
                                      '-r', git_rev],
                                       cwd=git_root)
 
-    too_short = ['\\','/']
-    changed = {os.path.dirname(f) for f in files if f and f not in too_short}
+    too_short = ('\\','/')
+    changed = {os.path.dirname(f) for f in files}
+    changed = {f for f in changed if f and f not in too_short}
     return changed
 
 def read_recipe(path):
@@ -143,7 +144,7 @@ def construct_graph(directory, filter_by_git_change=True):
 
     Annotate dependencies that don't have recipes in that directory
     '''
-
+    print('construct_graph with args: ', directory, filter_by_git_change)
     g = nx.DiGraph()
     build_numbers = {}
     directory = os.path.abspath(directory)
@@ -173,7 +174,6 @@ def construct_graph(directory, filter_by_git_change=True):
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
         for k, d in get_build_deps(pkg).iteritems():
             g.add_edge(name, k)
-            print('add edge', name, k)
     return g
 
 def dirty(graph, implicit=True):

@@ -7,7 +7,7 @@ from protoci.build2 import (make_pkg, make_deps,
 
 
 
-def sequential_build_main(parse_this=None, g=None):
+def sequential_build_main(parse_this=None, g=None, args=None):
     '''
         sequential_build_main(parse_this=None)
         Params:
@@ -33,7 +33,8 @@ def sequential_build_main(parse_this=None, g=None):
                 with
     '''
     from protoci.split import make_package_tree_main
-    args = build_cli(parse_this=parse_this)
+    if args is None:
+        args = build_cli(parse_this=parse_this)
     if g is None:
         g = construct_graph(args.path, filter_by_git_diff=False)
     pre_build_clean_up(args)
