@@ -18,6 +18,6 @@ platform:
 # - win-32
  - osx-64
 # - osx-32
-user: conda-team
+user: psteinberg
 
 package: protoci

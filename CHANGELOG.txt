@@ -39,3 +39,7 @@ Testing package builds (bugs)
 0.0.9
 ----
 anaconda.org user to conda-team
+
+0.0.10
+-----
+anaconda.org user to psteinberg
