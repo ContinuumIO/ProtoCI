@@ -11,7 +11,6 @@ script:
 install_channels:
 - defaults
 - python
-package: protoci
 platform:
  - linux-64
  - linux-32
@@ -19,11 +18,9 @@ platform:
  - win-32
  - osx-64
  - osx-32
-user: conda-team
+user: psteinberg
 
-package:
-  name: protoci
-  version: 0.0.7
+package: protoci
 
 build:
   number: 0
