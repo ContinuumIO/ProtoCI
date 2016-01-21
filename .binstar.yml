@@ -4,28 +4,28 @@ after_script:
 - echo "ProtoCI build was a:$BINSTAR_BUILD_RESULT" | tee artifact1.txt
 after_success:
 - echo "ProtoCI BUILD SUCCESS"
-before_script:
-- echo "Prepare to install networkx PyYAML requests jinja2...."
-- conda install networkx PyYAML requests jinja2
-- echo "Prepare to clone conda and conda-build for metadata reading..."
-- git clone https://github.com/conda/conda-build
-- git clone https://github.com/conda/conda
-- export PYTHONPATH=$PYTHONPATH:./conda-build:./conda
-- echo "PYTHONPATH below should include ./conda and ./conda-build"
-- echo $PYTHONPATH
-- echo 'Try to get m4'
-- install_m4() { wget ftp://ftp.gnu.org/gnu/m4/m4-1.4.10.tar.gz && tar -xvzf m4-1.4.10.tar.gz && cd m4-1.4.10 && ./configure --prefix=/usr/local/m4 && make && cd ..; }
-- conda install m4 || install_m4
-
-
 engine:
 - python
 script:
- - python build2.py ./ build -buildall
+ - conda build .
 install_channels:
 - defaults
 - python
 package: protoci
 platform:
-- linux-64
+ - linux-64
+ - linux-32
+ - win-64
+ - win-32
+ - osx-64
+ - osx-32
+user: conda-team
 
+package:
+  name: protoci
+  version: 0.0.6
+
+build:
+  number: 0
+  script:
+    - conda build .

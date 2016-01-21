@@ -7,7 +7,7 @@ after_success:
 engine:
 - python
 script:
- - conda install protoci -c conda-team
+ - conda install -c conda-team protoci
  - echo BUILD_ARGS =  {{BUILD_ARGS}}
  - protoci-sequential-build {{BUILD_ARGS}}
 install_channels:

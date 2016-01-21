@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.4
+  version: 0.0.6
 
 source:
-  git_rev: 0.0.4
+  git_rev: 0.0.6
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
@@ -13,8 +13,6 @@ requirements:
   build:
     - python
     - setuptools
-    - networkx
-    - requests
     - networkx
     - pyyaml
     - requests
@@ -39,7 +37,11 @@ test:
     - yaml
     - jinja2
   commands:
-    - protoci-sequential-build -h
-    - protoci-difference-build -h
-    - protoci-split-packages -h
-    - protoci-submit -h
+    - ls protoci-sequential-build #[not win]
+    - ls protoci-difference-build #[not win]
+    - ls protoci-split-packages #[not win]
+    - ls protoci-submit #[not win]
+    - dir protoci-sequential-build #[win]
+    - dir protoci-difference-build #[win]
+    - dir protoci-split-packages #[win]
+    - dir protoci-submit #[win]
