@@ -31,3 +31,11 @@ Small changes in conda metadata files, meta.yaml
 -----
 
 Improve .binstar.yml 
+
+0.0.7 and 0.0.8
+----
+Testing package builds (bugs)
+
+0.0.9
+----
+anaconda.org user to conda-team
