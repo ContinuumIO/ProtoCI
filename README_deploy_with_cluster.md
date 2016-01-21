@@ -90,12 +90,7 @@ chalmers log anaconda-build-worker --head 50
 chalmers log anaconda-build-worker —showfile
 ```
 
- * If you want to do remote commands within the correct conda env, do statements like this:
-
-```
-acluster cmd "source activate anaconda-builder && conda install -c psteinberg protoci"
-```
-
+ 
 ## Use the on-demand queue
 
 ```
