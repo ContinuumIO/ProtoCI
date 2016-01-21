@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.6
+  version: 0.0.7
 
 source:
-  git_rev: 0.0.6
+  git_rev: 0.0.7
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
@@ -37,11 +37,11 @@ test:
     - yaml
     - jinja2
   commands:
-    - ls protoci-sequential-build #[not win]
-    - ls protoci-difference-build #[not win]
-    - ls protoci-split-packages #[not win]
-    - ls protoci-submit #[not win]
-    - dir protoci-sequential-build #[win]
-    - dir protoci-difference-build #[win]
-    - dir protoci-split-packages #[win]
-    - dir protoci-submit #[win]
+    - which protoci-sequential-build #[not win]
+    - which protoci-difference-build #[not win]
+    - which protoci-split-packages #[not win]
+    - which protoci-submit #[not win]
+    - where protoci-sequential-build #[win]
+    - where protoci-difference-build #[win]
+    - where protoci-split-packages #[win]
+    - where protoci-submit #[win]
