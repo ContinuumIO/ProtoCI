@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.15
+  version: 0.0.16
 
 source:
-  git_rev: 0.0.15
+  git_rev: 0.0.16
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:

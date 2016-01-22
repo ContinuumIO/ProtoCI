@@ -34,14 +34,19 @@ class PopenWrapper(object):
         self.disk = None
 
         #Process executed immediately
-        self.stop_conda_build_terms = ('usage', 'conda-build', '[-h]')
+        self.stop_conda_build_terms = [('usage', 'conda-build', '[-h]'),
+                                        ('Error:', 'unknown'),
+                                        ('Error:', 'meta.yaml')]
         self._execute(*args, **kwargs)
 
     def stop_hanging_conda_build(self, _popen, line):
-        if _popen.poll() or not _popen.is_running():
-            for term in self.stop_conda_build_terms:
-                if term in line:
-                    return True
+        for terms in self.stop_conda_build_terms:
+            all_true = False
+            for term in terms:
+                all_true = all_true and term in line
+            if all_true:
+                print('stop_hanging_conda_build', _popen.poll())
+                return True
         return False
 
     def readline_or_stop(self, _popen):
