@@ -101,11 +101,17 @@ class PopenWrapper(object):
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
                 self.readline_or_stop(_popen)
-            print('_popen.wait()')
-            _popen.wait()
-        except KeyboardInterrupt:
+
+        except Exception:
             _popen.kill()
             raise
+        finally:
+            try:
+                print('_popen.wait()')
+                _popen.wait(0)
+            except psutil.NoSuchProcess:
+                print('NoSuchProcess (ok)')
+                pass
 
     def __repr__(self):
         return str({'elapsed': self.elapsed,

@@ -7,7 +7,7 @@ from protoci.build2 import (make_pkg, make_deps,
 
 
 
-def sequential_build_main(parse_this=None, g=None, args=None):
+def sequential_build_main(parse_this=None, g=None, args=None, exit=True):
     '''
         sequential_build_main(parse_this=None)
         Params:
@@ -108,7 +108,8 @@ def sequential_build_main(parse_this=None, g=None, args=None):
         r, v = bytes2human(r), bytes2human(v)
         print("Max Memory Usage (RSS/VMS): {}/{}".format(r, v))
         print("Total elapsed time: {:.2f}m".format(e/60))
-
-        sys.exit(len(fail))
+        if exit:
+            sys.exit(len(fail))
+        return len(fail)
     except:
         raise
