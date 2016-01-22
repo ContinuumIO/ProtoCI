@@ -40,11 +40,10 @@ class PopenWrapper(object):
         self._execute(*args, **kwargs)
 
     def stop_hanging_conda_build(self, _popen, line):
+        '''conda build -some-bad-argument can hang,
+        waiting for user to read help.'''
         for terms in self.stop_conda_build_terms:
-            all_true = False
-            for term in terms:
-                all_true = all_true and term in line
-            if all_true:
+            if all(term in line for term in terms):
                 print('stop_hanging_conda_build', _popen.poll())
                 return True
         return False
