@@ -67,7 +67,6 @@ class PopenWrapper(object):
 
         # Using the convenience Popen class provided by psutil
         start_time = time.time()
-        kwargs['stdout'] = subprocess.PIPE
         kwargs['stderr'] = subprocess.PIPE
         _popen = psutil.Popen(*args, **kwargs)
         self.readline_or_stop(_popen)
