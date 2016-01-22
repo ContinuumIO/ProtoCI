@@ -70,7 +70,10 @@ class PopenWrapper(object):
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
         except KeyboardInterrupt:
-            _popen.kill()
+            try:
+                _popen.kill()
+            except psutil.NoSuchProcess:
+                pass
             raise
 
     def __repr__(self):
