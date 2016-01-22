@@ -31,7 +31,27 @@ class PopenWrapper(object):
         self.disk = None
 
         #Process executed immediately
+        self.stop_conda_build_terms = ('usage', 'conda-build', '[-h]')
         self._execute(*args, **kwargs)
+
+    def stop_hanging_conda_build(self, _popen, line):
+        if _popen.poll() or not _popen.is_running():
+            for term in self.stop_conda_build_terms:
+                if term in line:
+                    return True
+        return False
+
+    def readline_or_stop(self, _popen):
+
+        while True:
+            line = _popen.stderr.readline().decode().rstrip()
+            if line:
+                print(line)
+                if self.stop_hanging_conda_build(_popen, line):
+                    return True
+            else:
+                break
+        return False
 
     def _execute(self, *args, **kwargs):
         # The polling interval (in seconds)
@@ -43,6 +63,8 @@ class PopenWrapper(object):
 
         # Using the convenience Popen class provided by psutil
         start_time = time.time()
+        kwargs['stdout'] = subprocess.PIPE
+        kwargs['stderr'] = subprocess.PIPE
         _popen = psutil.Popen(*args, **kwargs)
         try:
             while _popen.is_running():
@@ -62,6 +84,7 @@ class PopenWrapper(object):
                     used_disk = initial_usage - psutil.disk_usage(sys.prefix).used
                     self.disk = max(used_disk, self.disk)
 
+
                 except psutil.AccessDenied as e:
                     if _popen.status() == psutil.STATUS_ZOMBIE:
                         _popen.wait()
@@ -69,6 +92,9 @@ class PopenWrapper(object):
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
+                if self.readline_or_stop(_popen):
+                    self.returncode = 101
+                    break
         except KeyboardInterrupt:
             _popen.kill()
             raise
