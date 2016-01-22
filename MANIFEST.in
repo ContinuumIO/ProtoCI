@@ -1,0 +1,3 @@
+include protoci/data/*
+include protoci/special_cases
+recursive-include protoci/special_cases *.*

@@ -7,17 +7,15 @@ after_success:
 engine:
 - python
 script:
- - conda build .
+ - conda install -c conda-team protoci
+ - echo BUILD_ARGS =  {{BUILD_ARGS}}
+ - protoci-sequential-build {{BUILD_ARGS}}
 install_channels:
 - defaults
 - python
+package: {{PACKAGE}}
 platform:
-# - linux-64
-# - linux-32
-# - win-64
-# - win-32
- - osx-64
-# - osx-32
-user: psteinberg
+{{PLATFORMS}}
+user: {{USER}}
+quiet: True
 
-package: protoci

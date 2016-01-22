@@ -1,0 +1,45 @@
+0.0.0
+-----
+
+Refactor to package style.
+
+0.0.1
+-----
+
+Fix problems introduced by refactor.
+Separate and clarify CLI choices
+Begin work on git difference builds 
+
+0.0.2
+-----
+
+Iron out git difference build better
+Put depends in meta.yaml
+Further refactor build2.py to separate files
+
+0.0.3
+-----
+
+Better conda package creation for ProtoCI
+
+0.0.5
+-----
+
+Small changes in conda metadata files, meta.yaml
+
+0.0.6
+-----
+
+Improve .binstar.yml 
+
+0.0.7 and 0.0.8
+----
+Testing package builds (bugs)
+
+0.0.9
+----
+anaconda.org user to conda-team
+
+0.0.10
+-----
+anaconda.org user to psteinberg
