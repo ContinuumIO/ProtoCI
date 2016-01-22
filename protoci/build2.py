@@ -101,6 +101,8 @@ class PopenWrapper(object):
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
                 self.readline_or_stop(_popen)
+            print('_popen.wait()')
+            _popen.wait()
         except KeyboardInterrupt:
             _popen.kill()
             raise
