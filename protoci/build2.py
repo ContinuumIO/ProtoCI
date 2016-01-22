@@ -17,6 +17,9 @@ from conda_build.metadata import parse, MetaData
 
 CONDA_BUILD_CACHE=os.environ.get("CONDA_BUILD_CACHE")
 
+class HangingBuildStop(ValueError):
+    pass
+
 class PopenWrapper(object):
     # Small wrapper around subprocess.Popen to allow memory usage monitoring
 
@@ -44,11 +47,12 @@ class PopenWrapper(object):
     def readline_or_stop(self, _popen):
 
         while True:
-            line = _popen.stderr.readline().decode().rstrip()
-            if line:
-                print(line)
-                if self.stop_hanging_conda_build(_popen, line):
-                    return True
+            self.line = _popen.stderr.readline().decode().rstrip()
+            if self.line:
+                print(self.line)
+                if self.stop_hanging_conda_build(_popen, self.line):
+                    self.returncode = 101
+                    raise HangingBuildStop(self.line)
             else:
                 break
         return False
@@ -66,6 +70,7 @@ class PopenWrapper(object):
         kwargs['stdout'] = subprocess.PIPE
         kwargs['stderr'] = subprocess.PIPE
         _popen = psutil.Popen(*args, **kwargs)
+        self.readline_or_stop(_popen)
         try:
             while _popen.is_running():
                 #We need to get all of the children of our process since our process spawns other processes
@@ -92,9 +97,7 @@ class PopenWrapper(object):
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
-                if self.readline_or_stop(_popen):
-                    self.returncode = 101
-                    break
+                self.readline_or_stop()
         except KeyboardInterrupt:
             _popen.kill()
             raise
@@ -302,7 +305,7 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
                 failed.add(pkg)
         except KeyboardInterrupt:
             return failed
-        except subprocess.CalledProcessError:
+        except Exception:
             failed.add(pkg)
             continue
 
