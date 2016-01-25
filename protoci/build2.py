@@ -30,8 +30,6 @@ class PopenWrapper(object):
         self.returncode = 173
         self.disk = None
 
-        #Process executed immediately
-        self.stop_conda_build_terms = ('usage', 'conda-build', '[-h]')
         self._execute(*args, **kwargs)
 
     def _execute(self, *args, **kwargs):
