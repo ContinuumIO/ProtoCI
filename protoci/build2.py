@@ -67,7 +67,7 @@ class PopenWrapper(object):
 
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
-                self.returncode = _popen.returncode
+                self.returncode = _popen.poll()
                 if _popen.returncode is not None:
                     _popen.kill()
                     break
