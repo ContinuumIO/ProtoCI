@@ -61,7 +61,6 @@ class PopenWrapper(object):
                     used_disk = initial_usage - psutil.disk_usage(sys.prefix).used
                     self.disk = max(used_disk, self.disk)
 
-
                 except psutil.AccessDenied as e:
                     if _popen.status() == psutil.STATUS_ZOMBIE:
                         _popen.wait()
@@ -69,6 +68,9 @@ class PopenWrapper(object):
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
+                if _popen.returncode is not None and _popen.is_running():
+                    _popen.kill()
+                    break
         except KeyboardInterrupt:
             _popen.kill()
             raise
