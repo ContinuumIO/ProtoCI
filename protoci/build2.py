@@ -69,6 +69,8 @@ class PopenWrapper(object):
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.poll()
                 if _popen.returncode is not None:
+                    # without this if block
+                    # builds hang
                     try:
                         _popen.kill()
                     except psutil.NoSuchProcess:
