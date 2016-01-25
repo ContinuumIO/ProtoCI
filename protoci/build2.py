@@ -68,7 +68,7 @@ class PopenWrapper(object):
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.returncode
-                if _popen.returncode is not None and _popen.is_running():
+                if _popen.returncode is not None:
                     _popen.kill()
                     break
         except KeyboardInterrupt:
