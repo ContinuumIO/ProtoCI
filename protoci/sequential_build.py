@@ -109,6 +109,6 @@ def sequential_build_main(parse_this=None, g=None, args=None):
         print("Max Memory Usage (RSS/VMS): {}/{}".format(r, v))
         print("Total elapsed time: {:.2f}m".format(e/60))
 
-        sys.exit(len(fail))
+        return len(fail)
     except:
         raise

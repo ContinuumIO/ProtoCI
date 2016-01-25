@@ -277,7 +277,8 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
             if build_times[pkg].returncode:
                 failed.add(pkg)
         except KeyboardInterrupt:
-            return failed
+            print('KeyboardInterrupt')
+            break
         except subprocess.CalledProcessError:
             failed.add(pkg)
             continue
