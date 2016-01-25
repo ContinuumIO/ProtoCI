@@ -69,7 +69,10 @@ class PopenWrapper(object):
                 self.elapsed = time.time() - start_time
                 self.returncode = _popen.poll()
                 if _popen.returncode is not None:
-                    _popen.kill()
+                    try:
+                        _popen.kill()
+                    except psutil.NoSuchProcess:
+                        pass
                     break
         except KeyboardInterrupt:
             _popen.kill()
