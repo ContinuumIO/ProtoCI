@@ -19,3 +19,5 @@ platform:
 user: {{USER}}
 quiet: True
 
+# no prints to stderr or out in X seconds kills build:
+iotimeout: 120
