@@ -27,3 +27,8 @@ After those steps, do a push to your conda-recipes fork, and then check your bui
 ```
 https://anaconda.org/my_username/conda-recipes
 ```
+When your branch is merged into the main conda/conda-recipes repo, you should be able to find a build at that time in:
+
+```
+https://anaconda.org/conda-team/conda-recipes
+```
