@@ -21,7 +21,6 @@ anaconda package --create my_username/conda-recipes   # replacing my_username wi
    * Change Build Queue to `conda-team/build_recipes`
    * Enter your email address for build notifications
   
-```
 
 After those steps, do a push to your conda-recipes fork, and then check your builds at:
 
