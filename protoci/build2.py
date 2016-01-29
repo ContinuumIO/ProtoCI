@@ -129,9 +129,11 @@ def git_changed_files(git_rev, git_root=''):
     if proc.wait():
         raise ValueError('Bad git return code: {}'.format(proc.poll()))
     files = proc.stdout.read().decode().splitlines()
+    print('Changed files: {}'.format(' '.join(files)))
     too_short = ('\\','/')
     changed = {os.path.dirname(f) for f in files}
     changed = {f for f in changed if f and f not in too_short}
+    print('Changed dirs: {}'.format(' '.join(changed)))
     return changed
 
 def read_recipe(path):
@@ -179,13 +181,23 @@ def construct_graph(directory, filter_by_git_change=True):
     assert os.path.isdir(directory)
 
     # get all immediate subdirectories
+    other_top_dirs = [d for d in os.listdir(directory)
+                    if os.path.isdir(os.path.join(directory, d)) and
+                    not os.path.exists(os.path.join(directory, d, 'meta.yaml')) and
+                    not d.startswith('.')]
     recipe_dirs = next(os.walk(directory))[1]
+    for top in other_top_dirs:
+        next_level = next(os.walk(os.path.join(directory, top)))[1]
+        recipe_dirs += [os.path.join(top, n) for n in next_level]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
     if filter_by_git_change:
         changed_recipes = git_changed_files('HEAD', git_root=directory)
         print('changed_recipes {}'.format(changed_recipes))
+    print('other_top_dirs', other_top_dirs)
     for rd in recipe_dirs:
+        print('rd', rd)
         recipe_dir = os.path.join(directory, rd)
+        print('recipe_dir', recipe_dir)
         try:
             pkg = read_recipe(recipe_dir)
             name = pkg.name()
@@ -194,7 +206,9 @@ def construct_graph(directory, filter_by_git_change=True):
 
         # add package (in case it has no build deps)
         if filter_by_git_change:
-            _dirty = True if rd in changed_recipes else False
+            _dirty = False
+            if rd in changed_recipes:
+                _dirty = True
         else:
             _dirty = True
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
@@ -210,11 +224,13 @@ def dirty(graph, implicit=True):
     """
     # Reverse the edges to get true dependency
     dirty_nodes = {n for n, v in graph.node.items() if v.get('dirty', False)}
+    print('dirty_nodes 1', dirty_nodes)
     if not implicit:
         return dirty_nodes
 
     # Get implicitly dirty nodes (all of the packages that depend on a dirty package)
     dirty_nodes.update(*map(set, (graph.predecessors(n) for n in dirty_nodes)))
+    print('dirty_nodes', dirty_nodes)
     return dirty_nodes
 
 def build_order(graph, packages, level=0, filter_by_git_change=True):
@@ -340,9 +356,6 @@ def build_cli(parse_this=None):
     build_pkgs.add_argument("-buildall", action='store_true')
     build_pkgs.add_argument('-json-file-key', default=[], nargs="+",
                             help="Example: -json-file-key package_tree.js libnetcdf pysam")
-    build_pkgs.add_argument('--all-diffs',
-                            help="Test any diffs in path including downstream",
-                            action="store_true")
     parser.add_argument("-dry", action='store_true', default=False,
                               help="Dry run")
     parser.add_argument("-api", action='store_true', dest='recompile',
