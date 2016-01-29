@@ -30,7 +30,7 @@ def difference_build_cli(parse_this=None):
     if not parse_this:
         args = parser.parse_args()
     args = parser.parse_args(parse_this)
-    parse_this = [args.path, '--all-diffs']
+    parse_this = [args.path]
     if args.dry:
         parse_this.append('-dry')
     return build_cli(parse_this=parse_this)

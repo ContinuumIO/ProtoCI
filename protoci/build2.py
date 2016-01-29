@@ -30,28 +30,7 @@ class PopenWrapper(object):
         self.returncode = 173
         self.disk = None
 
-        #Process executed immediately
-        self.stop_conda_build_terms = ('usage', 'conda-build', '[-h]')
         self._execute(*args, **kwargs)
-
-    def stop_hanging_conda_build(self, _popen, line):
-        if _popen.poll() or not _popen.is_running():
-            for term in self.stop_conda_build_terms:
-                if term in line:
-                    return True
-        return False
-
-    def readline_or_stop(self, _popen):
-
-        while True:
-            line = _popen.stderr.readline().decode().rstrip()
-            if line:
-                print(line)
-                if self.stop_hanging_conda_build(_popen, line):
-                    return True
-            else:
-                break
-        return False
 
     def _execute(self, *args, **kwargs):
         # The polling interval (in seconds)
@@ -63,8 +42,6 @@ class PopenWrapper(object):
 
         # Using the convenience Popen class provided by psutil
         start_time = time.time()
-        kwargs['stdout'] = subprocess.PIPE
-        kwargs['stderr'] = subprocess.PIPE
         _popen = psutil.Popen(*args, **kwargs)
         try:
             while _popen.is_running():
@@ -84,16 +61,20 @@ class PopenWrapper(object):
                     used_disk = initial_usage - psutil.disk_usage(sys.prefix).used
                     self.disk = max(used_disk, self.disk)
 
-
                 except psutil.AccessDenied as e:
                     if _popen.status() == psutil.STATUS_ZOMBIE:
                         _popen.wait()
 
                 time.sleep(time_int)
                 self.elapsed = time.time() - start_time
-                self.returncode = _popen.returncode
-                if self.readline_or_stop(_popen):
-                    self.returncode = 101
+                self.returncode = _popen.poll()
+                if _popen.returncode is not None:
+                    # without this if block
+                    # builds hang
+                    try:
+                        _popen.kill()
+                    except psutil.NoSuchProcess:
+                        pass
                     break
         except KeyboardInterrupt:
             _popen.kill()
@@ -198,7 +179,14 @@ def construct_graph(directory, filter_by_git_change=True):
     assert os.path.isdir(directory)
 
     # get all immediate subdirectories
+    other_top_dirs = [d for d in os.listdir(directory)
+                    if os.path.isdir(os.path.join(directory, d)) and
+                    not os.path.exists(os.path.join(directory, d, 'meta.yaml')) and
+                    not d.startswith('.')]
     recipe_dirs = next(os.walk(directory))[1]
+    for top in other_top_dirs:
+        next_level = next(os.walk(os.path.join(directory, top)))[1]
+        recipe_dirs += [os.path.join(top, n) for n in next_level]
     recipe_dirs = set(x for x in recipe_dirs if not x.startswith('.'))
     if filter_by_git_change:
         changed_recipes = git_changed_files('HEAD', git_root=directory)
@@ -213,7 +201,9 @@ def construct_graph(directory, filter_by_git_change=True):
 
         # add package (in case it has no build deps)
         if filter_by_git_change:
-            _dirty = True if rd in changed_recipes else False
+            _dirty = False
+            if rd in changed_recipes:
+                _dirty = True
         else:
             _dirty = True
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
@@ -301,7 +291,8 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
             if build_times[pkg].returncode:
                 failed.add(pkg)
         except KeyboardInterrupt:
-            return failed
+            print('KeyboardInterrupt')
+            break
         except subprocess.CalledProcessError:
             failed.add(pkg)
             continue
@@ -358,9 +349,6 @@ def build_cli(parse_this=None):
     build_pkgs.add_argument("-buildall", action='store_true')
     build_pkgs.add_argument('-json-file-key', default=[], nargs="+",
                             help="Example: -json-file-key package_tree.js libnetcdf pysam")
-    build_pkgs.add_argument('--all-diffs',
-                            help="Test any diffs in path including downstream",
-                            action="store_true")
     parser.add_argument("-dry", action='store_true', default=False,
                               help="Dry run")
     parser.add_argument("-api", action='store_true', dest='recompile',
