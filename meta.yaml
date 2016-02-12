@@ -1,9 +1,9 @@
 package:
   name: protoci
-  version: 0.0.28
+  version: 0.0.29
 
 source:
-  git_rev: 0.0.28
+  git_rev: 0.0.29
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
@@ -11,6 +11,7 @@ build:
 
 requirements:
   build:
+    - python 2.7.10
     - setuptools
     - networkx
     - pyyaml
@@ -19,6 +20,7 @@ requirements:
     - psutil
     - pycosat
   run:
+    - python 2.7.10
     - networkx
     - requests
     - networkx
