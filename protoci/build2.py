@@ -207,7 +207,7 @@ def construct_graph(directory, filter_by_git_change=True):
         else:
             _dirty = True
         g.add_node(name, meta=describe_meta(pkg), recipe=recipe_dir, dirty=_dirty)
-        for k, d in get_build_deps(pkg).iteritems():
+        for k, d in get_build_deps(pkg).items():
             g.add_edge(name, k)
     return g
 
