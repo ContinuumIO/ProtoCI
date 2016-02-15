@@ -18,16 +18,17 @@ def find_package_data():
 
 setup(
     name='protoci',
-    version='0.0.31',
+    version='0.0.32',
     author='Continuum Analytics',
     author_email='psteinberg@continuum.io',
     url='http://github.com/ContinuumIO/protoci',
     packages=['protoci'],
     include_package_data=True,
     package_data={'protoci': ['protoci/data/*',] + find_package_data()},
-    install_requires=['networkx',
+    install_requires=['networkx', 'setuptools',
                       'PyYAML', 'requests',
-                      'jinja2', 'psutil'],
+                      'jinja2', 'psutil',
+                      'pytest','pycosat'],
     zip_safe=False,
     entry_points={
       'console_scripts': [

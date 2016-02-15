@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 build_protoci.py creates conda packages of
 protoci for all operating systems and python versions.
