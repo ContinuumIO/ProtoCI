@@ -87,13 +87,14 @@ def sequential_build_main(parse_this=None, g=None, args=None):
         else:
             # using -build or -buildall flags
             print('call make_deps from sequential_build_main')
-            success, fail, times = make_deps(g, args.build, args.dry,
+            success, fail, not_tested, times = make_deps(g, args.build, args.dry,
                                              extra_args=args.cbargs,
                                              level=args.level,
                                              autofail=args.autofail)
         print("BUILD SUMMARY:")
         print("SUCCESS: [{}]".format(', '.join(success)))
         print("FAIL: [{}]".format(', '.join(fail)))
+        print("NOT_TESTED: [{}]".format(', '.join(not_tested)))
 
         # Sum memory usage and print elapsed times.
         r, v, e = 0, 0, 0

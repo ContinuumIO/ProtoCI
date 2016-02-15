@@ -267,13 +267,16 @@ def build_order(graph, packages, level=0, filter_by_git_change=True):
 
     return tmp_global, nx.topological_sort(tmp_global, reverse=True)
 
-def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
+def make_deps(graph, package, dry=False, extra_args='',
+              level=0, autofail=True, jobtimeout=3600,
+              timeoutbuffer=600):
     g, order = build_order(graph, package, level=level)
     # Filter out any packages that don't have recipes
     order = [pkg for pkg in order if g.node[pkg].get('meta')]
     print("Build order:\n{}".format('\n'.join(order)))
-
+    elapsed = 0.0
     failed = set()
+    not_tested = set()
     build_times = {x:None for x in order}
     for pkg in order:
         print("Building ", pkg)
@@ -287,7 +290,19 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
                 failed.add(pkg)
                 continue
             build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
+
             build_times[pkg] = build_time
+            if build_time is None:
+                failed.add(pkg)
+            elapsed += build_times[pkg].elapsed
+            if elapsed > jobtimeout - timeoutbuffer:
+                idx = order.index(pkg) + 1
+                if idx >= len(order):
+                    not_tested = set()
+                else:
+                    not_tested = set(order[idx:])
+                print('TIMEOUT within protoci, NOT_TESTED', not_tested)
+                break
             if build_times[pkg].returncode:
                 failed.add(pkg)
         except KeyboardInterrupt:
@@ -297,7 +312,7 @@ def make_deps(graph, package, dry=False, extra_args='', level=0, autofail=True):
             failed.add(pkg)
             continue
 
-    return list(set(order)-failed), list(failed), build_times
+    return list(set(order) - failed - not_tested), list(failed), list(not_tested), build_times
 
 
 def make_pkg(package, dry=False, extra_args=''):
@@ -363,6 +378,10 @@ def build_cli(parse_this=None):
                         default=[],
                         nargs="+",
                         help="Rather than determine tree, build the --packages in order")
+    parser.add_argument('-depth',
+                        required=False,
+                        type=int,
+                        help="Used only in git diff (depth of changed packages)")
     if parse_this is None:
         args = parser.parse_args()
     else:

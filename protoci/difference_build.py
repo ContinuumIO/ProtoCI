@@ -1,4 +1,6 @@
+from __future__ import print_function
 import argparse
+import json
 import subprocess
 import sys
 
@@ -27,20 +29,38 @@ def difference_build_cli(parse_this=None):
     parser.add_argument('-dry',
                         action='store_true',
                         help='Dry run (store_true)')
+    parser.add_argument('-depth',
+                        default=1,
+                        type=int,
+                        help="Search depth for packages affected "
+                             "by git changes. (1 = 1 node away changes)")
     if not parse_this:
         args = parser.parse_args()
     args = parser.parse_args(parse_this)
     parse_this = [args.path]
     if args.dry:
         parse_this.append('-dry')
-    return build_cli(parse_this=parse_this)
+    args2 = build_cli(parse_this=parse_this)
+    vars(args2).update(vars(args))
+    return args2
 
+def expand_dirty_label(g, changed=None):
+    changed = changed or set()
+    for node, value in g.node.items():
+        if value.get('dirty'):
+            changed.add(node)
+            for successor in g.predecessors(node):
+                changed.add(successor)
+                g.node[successor]['dirty'] = True
+    return changed
 
 def difference_build_main(parse_this=None):
     args = difference_build_cli(parse_this=parse_this)
-    # actually this may not be needed in CI: checkout_last_changed(args)
-    #      (I think that is done automatically)
     g = construct_graph(args.path, filter_by_git_change=True)
+    changed = set()
+    for repeat in range(args.depth):
+        changed = expand_dirty_label(g, changed)
+    print('Full packages to test: ', json.dumps(list(changed)))
     return sequential_build_main(parse_this=parse_this,
                                  g=g,
                                  args=None)
