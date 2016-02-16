@@ -5,7 +5,8 @@ import subprocess
 import sys
 
 from protoci.build2 import (construct_graph, build_cli,
-                            last_changed_git_branch)
+                            last_changed_git_branch,
+                            add_timeout_options)
 from protoci.sequential_build import sequential_build_main
 
 def checkout_last_changed(args):
@@ -34,6 +35,7 @@ def difference_build_cli(parse_this=None):
                         type=int,
                         help="Search depth for packages affected "
                              "by git changes. (1 = 1 node away changes)")
+    parser = add_timeout_options(parser)
     if not parse_this:
         args = parser.parse_args()
     args = parser.parse_args(parse_this)
@@ -41,7 +43,9 @@ def difference_build_cli(parse_this=None):
     if args.dry:
         parse_this.append('-dry')
     args2 = build_cli(parse_this=parse_this)
-    vars(args2).update(vars(args))
+    args2.timeout = args.timeout
+    args2.buf = args.buf
+    args2.depth = args.depth
     return args2
 
 def expand_dirty_label(g, changed=None):
@@ -61,6 +65,6 @@ def difference_build_main(parse_this=None):
     for repeat in range(args.depth):
         changed = expand_dirty_label(g, changed)
     print('Full packages to test: ', json.dumps(list(changed)))
-    return sequential_build_main(parse_this=parse_this,
+    return sequential_build_main(parse_this=None,
                                  g=g,
-                                 args=None)
+                                 args=args)

@@ -1,14 +1,16 @@
 package:
   name: protoci
-  version: 0.0.31
+  version: 0.0.33
 
 source:
-  git_rev: 0.0.31
+  git_rev: 0.0.33
   git_url: https://github.com/ContinuumIO/ProtoCI
 
 build:
   number: 1
-
+  no_link:
+    bin/*.py #[not win]
+    bin\*.py #[win]
 requirements:
   build:
     - setuptools

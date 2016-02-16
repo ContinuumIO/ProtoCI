@@ -77,7 +77,9 @@ def sequential_build_main(parse_this=None, g=None, args=None):
                 try:
                     print('BUILD_PACKAGE:', package)
                     build_time = make_pkg(package, dry=args.dry,
-                                          extra_args=args.cbargs)
+                                          extra_args=args.cbargs,
+                                          jobtimeout=args.timeout or 3600,
+                                          timeout_buffer=args.buf or 600)
                     success.append(package)
                 except Exception as e:
                     print('Failed on make_pkg for', package, 'with:', repr(e))

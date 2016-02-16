@@ -269,7 +269,7 @@ def build_order(graph, packages, level=0, filter_by_git_change=True):
 
 def make_deps(graph, package, dry=False, extra_args='',
               level=0, autofail=True, jobtimeout=3600,
-              timeoutbuffer=600):
+              timeout_buffer=600):
     g, order = build_order(graph, package, level=level)
     # Filter out any packages that don't have recipes
     order = [pkg for pkg in order if g.node[pkg].get('meta')]
@@ -277,7 +277,7 @@ def make_deps(graph, package, dry=False, extra_args='',
     elapsed = 0.0
     failed = set()
     not_tested = set()
-    build_times = {x:None for x in order}
+    build_times = {x: None for x in order}
     for pkg in order:
         print("Building ", pkg)
         try:
@@ -290,12 +290,9 @@ def make_deps(graph, package, dry=False, extra_args='',
                 failed.add(pkg)
                 continue
             build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
-
             build_times[pkg] = build_time
-            if build_time is None:
-                failed.add(pkg)
             elapsed += build_times[pkg].elapsed
-            if elapsed > jobtimeout - timeoutbuffer:
+            if elapsed > jobtimeout - timeout_buffer:
                 idx = order.index(pkg) + 1
                 if idx >= len(order):
                     not_tested = set()
@@ -356,6 +353,29 @@ def pre_build_clean_up(args):
             shutil.copy(full_file, target + '_removed')
             shutil.copy(full_file, target)
 
+def add_timeout_options(parser):
+    parser.add_argument('--build-worker-timeout',
+                        '-timeout',
+                        type=int,
+                        dest='timeout',
+                        help='The current setting on the build worker for job timeout.')
+    parser.add_argument('--timeout-buffer',
+                        '-buf',
+                        type=int,
+                        dest='buf',
+                        help='Seconds before timeout to not initiate new build.')
+
+
+    return parser
+
+def validate_timeout(args):
+    if args.timeout and args.buf:
+        pass
+    elif args.timeout or args.buf:
+        raise ValueError('-timeout is the build '
+                         'worker\'s setting for timeout'
+                         ' while -buf is the setting for '
+                         ' the buffer from that to start closing job.')
 def build_cli(parse_this=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("path", default='.')
@@ -382,6 +402,7 @@ def build_cli(parse_this=None):
                         required=False,
                         type=int,
                         help="Used only in git diff (depth of changed packages)")
+    parser = add_timeout_options(parser)
     if parse_this is None:
         args = parser.parse_args()
     else:
@@ -391,4 +412,5 @@ def build_cli(parse_this=None):
     print('Running build2.py with args of', args)
     if getattr(args, 'json_file_key', None):
         assert len(args.json_file_key) == 2, 'Should be 2 args: json_filename key'
+    validate_timeout(args)
     return args
