@@ -347,11 +347,13 @@ def pre_build_clean_up(args):
             full_file = os.path.join(special, dirr, fil)
             if not os.path.exists(os.path.join(args.path, dirr)):
                 continue
+
             target = os.path.join(args.path, dirr, fil)
             print('Copy', full_file, 'to', target)
             print('Copy', full_file, 'to', target+'_removed')
-            shutil.copy(full_file, target + '_removed')
-            shutil.copy(full_file, target)
+            copier = shutil.copy if not os.path.isdir(full_file) else shutil.copytree
+            copier(full_file, target + '_removed')
+            copier.copy(full_file, target)
 
 def add_timeout_options(parser):
     parser.add_argument('--build-worker-timeout',
