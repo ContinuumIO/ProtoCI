@@ -292,7 +292,7 @@ def make_deps(graph, package, dry=False, extra_args='',
             build_time = make_pkg(g.node[pkg], dry=dry, extra_args=extra_args)
             build_times[pkg] = build_time
             elapsed += build_times[pkg].elapsed
-            if elapsed > jobtimeout - timeout_buffer:
+            if jobtimeout and elapsed > jobtimeout - timeout_buffer:
                 idx = order.index(pkg) + 1
                 if idx >= len(order):
                     not_tested = set()
@@ -320,7 +320,7 @@ def make_pkg(package, dry=False, extra_args=''):
             extra_args = extra_args.split()
             args = ['conda', 'build', '-q'] + extra_args + [path]
             print("+ " + ' '.join(args))
-            p = PopenWrapper(args, time_int=1)
+            p = PopenWrapper(args, time_int=1, cwd='.')
             return p
         except subprocess.CalledProcessError as e:
             print("Build failed with errorcode: ", e.returncode)
