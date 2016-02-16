@@ -18,7 +18,7 @@ def find_package_data():
 
 setup(
     name='protoci',
-    version='0.0.36',
+    version='0.0.37',
     author='Continuum Analytics',
     author_email='psteinberg@continuum.io',
     url='http://github.com/ContinuumIO/protoci',
