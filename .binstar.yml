@@ -12,12 +12,11 @@ install_channels:
 - defaults
 - python
 platform:
-# - linux-64
-# - linux-32
-# - win-64
-# - win-32
+ - linux-64
+ - linux-32
+ - win-64
+ - win-32
  - osx-64
-# - osx-32
 user: psteinberg
 
 package: protoci
