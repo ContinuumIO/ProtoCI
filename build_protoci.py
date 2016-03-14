@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 build_protoci.py creates conda packages of
 protoci for all operating systems and python versions.
@@ -67,14 +68,16 @@ def build_protoci(input_args):
                 print(out)
             else:
                 print("Conversion ok for", file)
-                for dist_dir in dists:
-                    dist_dir = os.path.join(path, dist_dir)
+                for dist in dists:
+                    dist_dir = os.path.join(path, dist)
                     for dist_file in os.listdir(dist_dir):
+                        env = os.environ.copy()
+                        env['CONDA_PY'] = CONDA_PY
                         proc = Popen(['anaconda', 'upload',
                                '--user', input_args.user,
                                os.path.abspath(os.path.join(dist_dir, dist_file)),
                                '--force',],
-                               cwd='.')
+                               cwd=path)
                         if proc.wait():
                             print('Failed on anaconda upload')
                             sys.exit(proc.poll())
