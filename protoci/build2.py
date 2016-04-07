@@ -52,7 +52,7 @@ class PopenWrapper(object):
                     # We use the parent process to get mem usage of all spawned processes
                     child_pids = [_.memory_info() for _ in parent.children(recursive=True) if _.is_running()]
                     # Sum the memory usage of all the children together (2D columnwise sum)
-                    rss, vms = [sum(_) for _ in zip(*child_pids)]
+                    rss, vms = [sum(_) for _ in zip(*child_pids)][:2]
 
                     self.rss = max(rss, self.rss)
                     self.vms = max(vms, self.vms)
